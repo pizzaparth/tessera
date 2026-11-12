@@ -1,8 +1,8 @@
 {
-  "name": "tessera",
+  "name": "obsidian-claude-vault",
   "private": true,
   "version": "1.0.0",
-  "description": "Turn conversations into connected knowledge - personal AI-assisted knowledge-mapping app with Obsidian-like graph and Markdown notes",
+  "description": "Obsidian desktop interface replica with integrated Claude AI assistant plugin for dynamic graph expansion",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"vite\" \"tsx watch server/index.ts\"",

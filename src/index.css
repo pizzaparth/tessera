@@ -4,61 +4,51 @@
 
 @layer base {
   body {
-    background-color: #faf9fc;
-    color: #0f172a;
-    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #1e1e1e;
+    color: #dcddde;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    user-select: none;
   }
 }
 
-/* Custom modern scrollbars */
+/* Obsidian-style sleek scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(241, 245, 249, 0.7);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(203, 213, 225, 0.8);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 1);
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* Cytoscape container styling - clean, inviting, modern canvas */
-.cytoscape-container {
+/* Obsidian native graph canvas background */
+.obsidian-graph-canvas {
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #faf8ff 100%);
+  background-color: #161616;
 }
 
-/* Soft delicate background grid */
-.bg-canvas-dots {
-  background-image: radial-gradient(rgba(99, 102, 241, 0.1) 1.2px, transparent 1.2px);
-  background-size: 20px 20px;
+/* Wikilink style in Markdown */
+.internal-link {
+  color: #7b68ee;
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
-.bg-canvas-grid {
-  background-image: 
-    linear-gradient(to right, rgba(226, 232, 240, 0.7) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(226, 232, 240, 0.7) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+.internal-link:hover {
+  color: #9d8df1;
 }

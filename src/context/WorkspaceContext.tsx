@@ -1,102 +1,70 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-import {
-  ConceptNode,
-  ConceptEdge,
-  ConceptType,
-  ConceptDomain,
-  RelationshipType,
-  ExtractionResult,
-  ExtractionSuggestion,
-  AIProvider,
-  FilterState,
-  GraphAnalytics,
-} from '../types';
-import { initialNodes, initialEdges } from '../data/sampleGraph';
-
-export type WorkspaceTab =
-  | 'graph'
-  | 'mapper'
-  | 'notes'
-  | 'insights'
-  | 'review'
-  | 'analytics';
-
-interface HistoryEntry {
-  id: string;
-  timestamp: string;
-  action: string;
-  details?: string;
-}
+import { NoteNode, NoteEdge, ChatMessage, GraphPhysicsSettings } from '../types';
+import { initialVaultNodes, initialVaultEdges } from '../data/sampleGraph';
 
 interface WorkspaceContextType {
-  nodes: ConceptNode[];
-  edges: ConceptEdge[];
-  selectedNode: ConceptNode | null;
+  nodes: NoteNode[];
+  edges: NoteEdge[];
   selectedNodeId: string | null;
-  filters: FilterState;
-  activeTab: WorkspaceTab;
+  selectedNode: NoteNode | null;
+  activeView: 'graph' | 'note' | 'split';
+  isClaudeOpen: boolean;
+  isSidebarOpen: boolean;
+  chatMessages: ChatMessage[];
+  isChatLoading: boolean;
+  graphPhysics: GraphPhysicsSettings;
   apiKey: string | null;
-  aiProvider: AIProvider;
-  extractionResult: ExtractionResult | null;
-  reviewQueue: ExtractionSuggestion[];
-  historyLog: HistoryEntry[];
-  analytics: GraphAnalytics;
-  
+  statusNotification: string | null;
+
   // Actions
-  setActiveTab: (tab: WorkspaceTab) => void;
   selectNode: (id: string | null) => void;
-  addNode: (node: ConceptNode) => void;
-  updateNode: (id: string, updates: Partial<ConceptNode>) => void;
-  deleteNode: (id: string) => void;
-  addEdge: (edge: ConceptEdge) => void;
-  deleteEdge: (id: string) => void;
-  setFilters: (updates: Partial<FilterState>) => void;
-  resetFilters: () => void;
+  setActiveView: (view: 'graph' | 'note' | 'split') => void;
+  toggleClaude: () => void;
+  toggleSidebar: () => void;
+  sendMessageToClaude: (text: string) => Promise<void>;
+  updateNodeContent: (id: string, content: string) => void;
+  createNote: (title: string, folder?: string) => void;
+  deleteNote: (id: string) => void;
+  setGraphPhysics: (updates: Partial<GraphPhysicsSettings>) => void;
   setApiKey: (key: string | null) => void;
-  setAiProvider: (provider: AIProvider) => void;
-  setExtractionResult: (result: ExtractionResult | null) => void;
-  acceptSuggestion: (id: string) => void;
-  rejectSuggestion: (id: string) => void;
-  acceptAllSuggestions: () => void;
-  updateSuggestion: (id: string, updates: Partial<ExtractionSuggestion>) => void;
-  resetWorkspace: () => void;
+  resetVault: () => void;
 }
 
-const initialFilters: FilterState = {
-  searchQuery: '',
-  selectedDomains: [],
-  selectedTypes: [],
-  selectedRelationships: [],
+const initialPhysics: GraphPhysicsSettings = {
+  nodeSize: 22,
+  linkDistance: 130,
+  repelForce: 600,
+  showOrphans: true,
+  filterFolder: 'all',
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [nodes, setNodes] = useState<ConceptNode[]>(initialNodes);
-  const [edges, setEdges] = useState<ConceptEdge[]>(initialEdges);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('momentum_factor');
-  const [filters, setFiltersState] = useState<FilterState>(initialFilters);
-  const [activeTab, setActiveTabState] = useState<WorkspaceTab>('graph');
-
-  // Normalize legacy tab references if any
-  const setActiveTab = (tab: WorkspaceTab) => {
-    if ((tab as string) === 'overview') {
-      setActiveTabState('graph');
-    } else if (tab === 'analytics') {
-      setActiveTabState('insights');
-    } else {
-      setActiveTabState(tab);
-    }
-  };
+  const [nodes, setNodes] = useState<NoteNode[]>(initialVaultNodes);
+  const [edges, setEdges] = useState<NoteEdge[]>(initialVaultEdges);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('neural_networks');
+  const [activeView, setActiveView] = useState<'graph' | 'note' | 'split'>('graph');
+  const [isClaudeOpen, setIsClaudeOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [graphPhysics, setGraphPhysicsState] = useState<GraphPhysicsSettings>(initialPhysics);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [aiProvider, setAiProvider] = useState<AIProvider>('openai');
-  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
-  const [reviewQueue, setReviewQueue] = useState<ExtractionSuggestion[]>([]);
-  const [historyLog, setHistoryLog] = useState<HistoryEntry[]>([
+  const [statusNotification, setStatusNotification] = useState<string | null>(null);
+
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 'init',
-      timestamp: new Date().toLocaleTimeString(),
-      action: 'Session initialized with sample quantitative knowledge map',
+      id: 'init_msg',
+      role: 'assistant',
+      content: `Hello! I'm your Claude AI knowledge partner inside Obsidian. 
+
+You can ask me to:
+- **Expand on any topic**: I will generate new notes and automatically link them into your graph.
+- **Find connections**: I'll trace how ideas connect across your vault.
+- **Synthesize thoughts**: Select any note and ask me to deepen or challenge it.
+
+Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or *"Explore connections between Emergence and Neural Networks"*!`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
 
@@ -104,296 +72,194 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     return nodes.find((n) => n.id === selectedNodeId) || null;
   }, [nodes, selectedNodeId]);
 
-  const setFilters = (updates: Partial<FilterState>) => {
-    setFiltersState((prev) => ({ ...prev, ...updates }));
-  };
-
-  const resetFilters = () => {
-    setFiltersState(initialFilters);
-  };
-
-  const addHistory = (action: string, details?: string) => {
-    const entry: HistoryEntry = {
-      id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: new Date().toLocaleTimeString(),
-      action,
-      details,
-    };
-    setHistoryLog((prev) => [entry, ...prev.slice(0, 49)]);
+  const showNotification = (msg: string) => {
+    setStatusNotification(msg);
+    setTimeout(() => {
+      setStatusNotification((current) => (current === msg ? null : current));
+    }, 4000);
   };
 
   const selectNode = (id: string | null) => {
     setSelectedNodeId(id);
-    if (id) {
-      const node = nodes.find((n) => n.id === id);
-      if (node) {
-        addHistory(`Selected concept: ${node.label}`);
-      }
-    }
   };
 
-  const addNode = (node: ConceptNode) => {
-    setNodes((prev) => {
-      const exists = prev.some((n) => n.id === node.id);
-      if (exists) return prev;
-      return [...prev, node];
-    });
-    addHistory(`Added concept: ${node.label}`, `Type: ${node.type}, Domain: ${node.domain}`);
+  const toggleClaude = () => setIsClaudeOpen((prev) => !prev);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  const setGraphPhysics = (updates: Partial<GraphPhysicsSettings>) => {
+    setGraphPhysicsState((prev) => ({ ...prev, ...updates }));
   };
 
-  const updateNode = (id: string, updates: Partial<ConceptNode>) => {
+  const updateNodeContent = (id: string, content: string) => {
     setNodes((prev) =>
-      prev.map((node) => {
-        if (node.id === id) {
-          const updated = { ...node, ...updates };
-          const changeLog = {
-            id: `ver_${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            change: 'Content revised by researcher in session',
-            author: 'Current Researcher',
-            contentSnapshot: updates.markdownContent,
-          };
-          updated.versions = [changeLog, ...(node.versions || [])];
-          return updated;
-        }
-        return node;
-      })
+      prev.map((node) => (node.id === id ? { ...node, content, updatedAt: new Date().toISOString() } : node))
     );
-    addHistory(`Updated concept details: ${id}`);
   };
 
-  const deleteNode = (id: string) => {
-    const target = nodes.find((n) => n.id === id);
+  const createNote = (title: string, folder = 'Notes') => {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const newNode: NoteNode = {
+      id: slug,
+      label: title,
+      folder,
+      color: '#818cf8',
+      content: `# ${title}\n\nStart writing here or ask Claude to expand on this thought...\n`,
+      tags: ['new'],
+      createdAt: new Date().toISOString(),
+    };
+    setNodes((prev) => [...prev, newNode]);
+    setSelectedNodeId(newNode.id);
+    setActiveView('note');
+    showNotification(`Created new note: ${title}`);
+  };
+
+  const deleteNote = (id: string) => {
     setNodes((prev) => prev.filter((n) => n.id !== id));
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
     if (selectedNodeId === id) setSelectedNodeId(null);
-    addHistory(`Deleted concept: ${target?.label || id}`);
   };
 
-  const addEdge = (edge: ConceptEdge) => {
-    setEdges((prev) => {
-      const exists = prev.some(
-        (e) => e.source === edge.source && e.target === edge.target && e.type === edge.type
-      );
-      if (exists) return prev;
-      return [...prev, edge];
-    });
-    addHistory(`Created link: ${edge.source} -> ${edge.type} -> ${edge.target}`);
-  };
+  const sendMessageToClaude = async (text: string) => {
+    if (!text.trim()) return;
 
-  const deleteEdge = (id: string) => {
-    setEdges((prev) => prev.filter((e) => e.id !== id));
-    addHistory(`Deleted link: ${id}`);
-  };
+    const userMsg: ChatMessage = {
+      id: `user_${Date.now()}`,
+      role: 'user',
+      content: text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
 
-  const handleSetExtractionResult = (result: ExtractionResult | null) => {
-    setExtractionResult(result);
-    if (result && result.concepts) {
-      setReviewQueue(result.concepts);
-      addHistory(`Received extraction proposal with ${result.concepts.length} candidate concepts`);
+    setChatMessages((prev) => [...prev, userMsg]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...chatMessages, userMsg],
+          activeNode: selectedNode,
+          existingNodes: nodes,
+          apiKey,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const assistantMsg: ChatMessage = {
+        id: `asst_${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        expandedNodes: data.expandedNodes,
+      };
+
+      setChatMessages((prev) => [...prev, assistantMsg]);
+
+      // If Claude suggested new nodes, expand the graph dynamically!
+      if (data.expandedNodes && Array.isArray(data.expandedNodes) && data.expandedNodes.length > 0) {
+        setNodes((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const additions: NoteNode[] = [];
+          for (const rawNode of data.expandedNodes) {
+            if (!existingIds.has(rawNode.id)) {
+              additions.push({
+                id: rawNode.id,
+                label: rawNode.label,
+                folder: rawNode.folder || 'AI Discoveries',
+                color: rawNode.color || '#a78bfa',
+                content: rawNode.content || `# ${rawNode.label}\n\nGenerated by Claude knowledge assistant.`,
+                createdAt: new Date().toISOString(),
+              });
+              existingIds.add(rawNode.id);
+            }
+          }
+          return [...prev, ...additions];
+        });
+
+        // Add new edges
+        if (data.newEdges && Array.isArray(data.newEdges) && data.newEdges.length > 0) {
+          setEdges((prev) => {
+            const edgeKeys = new Set(prev.map((e) => `${e.source}_${e.target}`));
+            const additions: NoteEdge[] = [];
+            for (const rawEdge of data.newEdges) {
+              const key1 = `${rawEdge.source}_${rawEdge.target}`;
+              const key2 = `${rawEdge.target}_${rawEdge.source}`;
+              if (!edgeKeys.has(key1) && !edgeKeys.has(key2)) {
+                additions.push({
+                  id: `edge_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                  source: rawEdge.source,
+                  target: rawEdge.target,
+                });
+                edgeKeys.add(key1);
+              }
+            }
+            return [...prev, ...additions];
+          });
+        }
+
+        showNotification(`✨ Claude expanded your graph (+${data.expandedNodes.length} notes, +${data.newEdges?.length || 0} links)`);
+      }
+    } catch (err: any) {
+      const errorMsg: ChatMessage = {
+        id: `err_${Date.now()}`,
+        role: 'assistant',
+        content: `Error contacting Claude: ${err.message}. If you have an Anthropic API key, you can enter it in the top settings bar or in \`.env\`.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
-  const acceptSuggestion = (id: string) => {
-    const suggestion = reviewQueue.find((s) => s.id === id);
-    if (!suggestion) return;
-
-    // Convert suggestion to ConceptNode
-    const newNode: ConceptNode = {
-      id: suggestion.id,
-      label: suggestion.label,
-      type: suggestion.type,
-      domain: suggestion.domain,
-      summary: suggestion.summary,
-      definition: suggestion.summary,
-      markdownContent: `# ${suggestion.label}\n\n## Summary\n${suggestion.summary}\n\n## Source Excerpt\n> "${suggestion.excerpt}"\n\n*Extracted via AI assistance with ${(suggestion.confidence * 100).toFixed(0)}% confidence.*`,
-      provenance: {
-        source: 'AI-assisted conversation extraction',
-        excerpt: suggestion.excerpt,
-        origin: 'ai_suggested',
-        confidence: suggestion.confidence,
-        createdAt: new Date().toISOString(),
-      },
-    };
-
-    addNode(newNode);
-
-    // Add suggested edges if targets exist
-    suggestion.suggestedEdges.forEach((e) => {
-      const targetExists = nodes.some((n) => n.id === e.targetId) || e.targetId === newNode.id;
-      if (targetExists) {
-        addEdge({
-          id: `edge_${newNode.id}_${e.targetId}_${Date.now()}`,
-          source: newNode.id,
-          target: e.targetId,
-          type: e.type,
-          label: e.label,
-          provenance: {
-            source: 'AI-suggested relationship',
-            origin: 'ai_suggested',
-            createdAt: new Date().toISOString(),
-          },
-        });
-      }
-    });
-
-    setReviewQueue((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'accepted' } : s))
-    );
-    addHistory(`Accepted proposal: ${suggestion.label}`);
-  };
-
-  const rejectSuggestion = (id: string) => {
-    setReviewQueue((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
-    );
-    addHistory(`Rejected proposal: ${id}`);
-  };
-
-  const acceptAllSuggestions = () => {
-    reviewQueue.forEach((s) => {
-      if (s.status === 'pending') {
-        acceptSuggestion(s.id);
-      }
-    });
-    addHistory('Batch accepted all proposed concepts and links');
-  };
-
-  const updateSuggestion = (id: string, updates: Partial<ExtractionSuggestion>) => {
-    setReviewQueue((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
-  };
-
-  const resetWorkspace = () => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-    setSelectedNodeId('momentum_factor');
-    setFiltersState(initialFilters);
-    setExtractionResult(null);
-    setReviewQueue([]);
-    setHistoryLog([
+  const resetVault = () => {
+    setNodes(initialVaultNodes);
+    setEdges(initialVaultEdges);
+    setSelectedNodeId('neural_networks');
+    setActiveView('graph');
+    setChatMessages([
       {
         id: `reset_${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString(),
-        action: 'Workspace reset to clean sample state (all temporary in-memory edits cleared)',
+        role: 'assistant',
+        content: 'Vault restored to initial default state.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
+    showNotification('Restored default Obsidian vault');
   };
-
-  // Compute graph analytics
-  const analytics: GraphAnalytics = useMemo(() => {
-    const nodeCount = nodes.length;
-    const edgeCount = edges.length;
-
-    // Type distribution
-    const typeDistribution = nodes.reduce((acc, n) => {
-      acc[n.type] = (acc[n.type] || 0) + 1;
-      return acc;
-    }, {} as Record<ConceptType, number>);
-
-    // Domain distribution
-    const domainDistribution = nodes.reduce((acc, n) => {
-      acc[n.domain] = (acc[n.domain] || 0) + 1;
-      return acc;
-    }, {} as Record<ConceptDomain, number>);
-
-    // Degree calculation
-    const degrees: Record<string, number> = {};
-    nodes.forEach((n) => (degrees[n.id] = 0));
-    edges.forEach((e) => {
-      if (degrees[e.source] !== undefined) degrees[e.source]++;
-      if (degrees[e.target] !== undefined) degrees[e.target]++;
-    });
-
-    const topCentralNodes = Object.entries(degrees)
-      .map(([id, degree]) => {
-        const node = nodes.find((n) => n.id === id);
-        return {
-          id,
-          label: node?.label || id,
-          domain: node?.domain || 'Factor Research',
-          degree,
-        };
-      })
-      .sort((a, b) => b.degree - a.degree)
-      .slice(0, 6);
-
-    // Approximate bridge nodes (nodes connecting different domains)
-    const domainBridges: Record<string, number> = {};
-    edges.forEach((e) => {
-      const srcNode = nodes.find((n) => n.id === e.source);
-      const tgtNode = nodes.find((n) => n.id === e.target);
-      if (srcNode && tgtNode && srcNode.domain !== tgtNode.domain) {
-        domainBridges[e.source] = (domainBridges[e.source] || 0) + 1;
-        domainBridges[e.target] = (domainBridges[e.target] || 0) + 1;
-      }
-    });
-
-    const bridgeNodes = Object.entries(domainBridges)
-      .map(([id, betweenness]) => {
-        const node = nodes.find((n) => n.id === id);
-        return {
-          id,
-          label: node?.label || id,
-          domain: node?.domain || 'Factor Research',
-          betweenness,
-        };
-      })
-      .sort((a, b) => b.betweenness - a.betweenness)
-      .slice(0, 5);
-
-    const isolatedNodes = nodes
-      .filter((n) => (degrees[n.id] || 0) === 0)
-      .map((n) => ({ id: n.id, label: n.label, domain: n.domain }));
-
-    const density =
-      nodeCount > 1 ? Number(((2 * edgeCount) / (nodeCount * (nodeCount - 1))).toFixed(3)) : 0;
-
-    return {
-      nodeCount,
-      edgeCount,
-      typeDistribution,
-      domainDistribution,
-      topCentralNodes,
-      bridgeNodes,
-      isolatedNodes,
-      density,
-    };
-  }, [nodes, edges]);
 
   return (
     <WorkspaceContext.Provider
       value={{
         nodes,
         edges,
-        selectedNode,
         selectedNodeId,
-        filters,
-        activeTab,
+        selectedNode,
+        activeView,
+        isClaudeOpen,
+        isSidebarOpen,
+        chatMessages,
+        isChatLoading,
+        graphPhysics,
         apiKey,
-        aiProvider,
-        extractionResult,
-        reviewQueue,
-        historyLog,
-        analytics,
-        setActiveTab,
+        statusNotification,
         selectNode,
-        addNode,
-        updateNode,
-        deleteNode,
-        addEdge,
-        deleteEdge,
-        setFilters,
-        resetFilters,
+        setActiveView,
+        toggleClaude,
+        toggleSidebar,
+        sendMessageToClaude,
+        updateNodeContent,
+        createNote,
+        deleteNote,
+        setGraphPhysics,
         setApiKey,
-        setAiProvider,
-        setExtractionResult: handleSetExtractionResult,
-        acceptSuggestion,
-        rejectSuggestion,
-        acceptAllSuggestions,
-        updateSuggestion,
-        resetWorkspace,
+        resetVault,
       }}
     >
       {children}

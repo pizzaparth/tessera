@@ -8,180 +8,241 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '2mb' }));
 
-// Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
-    status: 'healthy',
-    mode: 'stateless-proxy',
-    persistedData: false,
+    status: 'online',
+    plugin: 'claude-for-obsidian',
+    hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
     timestamp: new Date().toISOString(),
   });
 });
 
-const SYSTEM_PROMPT = `You are TESSERA's AI conversation mapper.
-Analyze the provided conversation or passage.
-Extract key concepts, definitions, concise summaries, source excerpts, and typed relationships.
+const CLAUDE_OBSIDIAN_SYSTEM_PROMPT = `You are Claude, an AI knowledge partner integrated directly into Obsidian as an intelligent assistant plugin.
+The user is exploring their Obsidian knowledge vault consisting of interconnected Markdown notes.
 
-Output strict JSON with this schema:
+Your role:
+1. Respond thoughtfully and concisely to the user's question, brainstorming, or request.
+2. Actively EXPAND the knowledge graph by identifying 1-4 new meaningful concepts/notes that directly build upon the discussion.
+3. Determine how these new concepts link to each other and to existing nodes in the vault.
+
+You must end your response with a JSON block in this exact format:
+\`\`\`graph_expansion
 {
-  "summary": "Concise summary of the conversation",
-  "claims": ["List of core claims or ideas discussed"],
-  "openQuestions": ["Unresolved questions or research gaps mentioned"],
-  "assumptions": ["Key underlying assumptions"],
-  "concepts": [
+  "newNodes": [
     {
       "id": "snake_case_unique_id",
-      "label": "Human readable concept title",
-      "type": "method" | "model" | "dataset" | "instrument" | "metric" | "hypothesis" | "source" | "research_question",
-      "domain": "Factor Research" | "Market Microstructure" | "Portfolio Construction" | "Time Series & Econometrics" | "Risk Management" | "Execution & Trading",
-      "summary": "1-2 sentence concise definition or description",
-      "confidence": 0.95,
-      "excerpt": "Verbatim supporting quote from the conversation",
-      "suggestedEdges": [
-        {
-          "targetId": "existing_or_extracted_node_id",
-          "type": "depends_on" | "extends" | "measures" | "uses_data_from" | "supports" | "challenges" | "contradicts" | "related_to",
-          "label": "depends on"
-        }
-      ]
+      "label": "Human Readable Title",
+      "folder": "Folder Name (e.g. Artificial Intelligence, Cognitive Science, Philosophy, Systems, etc.)",
+      "color": "#818cf8",
+      "content": "# Title\\n\\nSummary of concept with [[Existing Note]] wikilinks..."
+    }
+  ],
+  "newEdges": [
+    {
+      "source": "new_or_existing_node_id",
+      "target": "new_or_existing_node_id"
     }
   ]
-}`;
+}
+\`\`\``;
 
-// AI extraction proxy endpoint
-app.post('/api/extract', async (req: Request, res: Response) => {
-  const { text, provider, apiKey, existingNodeIds = [] } = req.body;
-
-  if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Text input is required' });
+// Helper: Intelligent deterministic fallback when no API key is present
+function generateFallbackExpansion(prompt: string, activeNode: any, existingNodes: any[]) {
+  const lower = prompt.toLowerCase();
+  
+  if (lower.includes('transformer') || lower.includes('attention') || lower.includes('language')) {
+    return {
+      text: `The **Transformer Architecture** fundamentally restructured how computational attention operates across discrete token sequences. By replacing recurrent sequential bottlenecks with multi-head self-attention, transformers enable representations to be learned in parallel.\n\nIn relation to your vault:\n- Bridges directly into [[Attention Mechanism]]\n- Serves as the substrate for modern [[Large Language Models]]\n- Parallels associative retrieval in [[Working Memory]]\n\nI have created and linked 3 new nodes to expand your graph.`,
+      newNodes: [
+        {
+          id: 'transformer_architecture',
+          label: 'Transformer Architecture',
+          folder: 'Artificial Intelligence',
+          color: '#818cf8',
+          content: `# Transformer Architecture\n\nDeep learning architecture introduced by Vaswani et al. based entirely on self-attention mechanisms without recurrent or convolutional layers.\n\n## Core Components\n- Multi-Head [[Attention Mechanism]]\n- Positional Encodings\n- Feeds directly into [[Large Language Models]]\n\n#transformers #deep-learning`,
+        },
+        {
+          id: 'multi_head_attention',
+          label: 'Multi-Head Attention',
+          folder: 'Artificial Intelligence',
+          color: '#818cf8',
+          content: `# Multi-Head Attention\n\nMechanism that linearly projects queries, keys, and values $h$ times with different learned projections to attend to information from different representation subspaces at different positions.\n\n## Links\n- Sub-component of [[Transformer Architecture]]\n- Direct extension of [[Attention Mechanism]]`,
+        },
+        {
+          id: 'associative_memory',
+          label: 'Associative Memory',
+          folder: 'Cognitive Science',
+          color: '#34d399',
+          content: `# Associative Memory\n\nThe ability to learn and remember the relationship between unrelated items (e.g. names and faces).\n\n## Computational Counterparts\n- Paralleled by key-value retrieval in [[Transformer Architecture]]\n- Integral component of [[Working Memory]]`,
+        },
+      ],
+      newEdges: [
+        { source: 'transformer_architecture', target: 'attention_mechanism' },
+        { source: 'transformer_architecture', target: 'large_language_models' },
+        { source: 'multi_head_attention', target: 'transformer_architecture' },
+        { source: 'associative_memory', target: 'working_memory' },
+        { source: 'transformer_architecture', target: 'associative_memory' },
+      ],
+    };
   }
 
+  if (lower.includes('mind') || lower.includes('conscious') || lower.includes('experience') || lower.includes('qualia')) {
+    return {
+      text: `When exploring **Consciousness** and the **Philosophy of Mind**, one central development is the **Integrated Information Theory (IIT)** and the **Global Workspace Theory (GWT)**. These frameworks propose mathematical and cognitive explanations for how unified subjective experience arises.\n\nI've integrated these frameworks into your vault and linked them to [[Emergence]] and [[Information Theory]].`,
+      newNodes: [
+        {
+          id: 'integrated_information_theory',
+          label: 'Integrated Information Theory (IIT)',
+          folder: 'Philosophy of Mind',
+          color: '#f472b6',
+          content: `# Integrated Information Theory (IIT)\n\nProposed by Giulio Tononi, IIT posits that consciousness is a fundamental property of any physical system that has a high degree of integrated information ($\Phi$).\n\n## Core Connections\n- Directly addresses the hard problem of [[Consciousness]]\n- Grounded in the mathematical formalism of [[Information Theory]]\n- Explains macro-level [[Emergence]] from micro-state interactions`,
+        },
+        {
+          id: 'global_workspace_theory',
+          label: 'Global Workspace Theory (GWT)',
+          folder: 'Cognitive Science',
+          color: '#34d399',
+          content: `# Global Workspace Theory (GWT)\n\nA cognitive architecture theory proposed by Bernard Baars and Stanislas Dehaene, modeling consciousness as a theater where information is broadcast globally across brain networks.\n\n## Connections\n- Forms a bridge between [[Cognitive Architecture]] and [[Consciousness]]\n- Mirrors broadcast routing in [[Complex Adaptive Systems]]`,
+        },
+      ],
+      newEdges: [
+        { source: 'integrated_information_theory', target: 'consciousness' },
+        { source: 'integrated_information_theory', target: 'information_theory' },
+        { source: 'global_workspace_theory', target: 'cognitive_architecture' },
+        { source: 'global_workspace_theory', target: 'consciousness' },
+        { source: 'integrated_information_theory', target: 'emergence' },
+      ],
+    };
+  }
+
+  // Generic dynamic expansion based on active node or user prompt
+  const topicTitle = activeNode ? activeNode.label : prompt.slice(0, 24).trim();
+  const slug = topicTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  
+  return {
+    text: `Based on your exploration of **${topicTitle}**, I have identified new structural connections across your vault.\n\nBy synthesizing these relationships, we can see how ideas propagate between your primary notes. I have added new nodes to your graph and wired them into your active neighborhood.`,
+    newNodes: [
+      {
+        id: `${slug}_dynamics`,
+        label: `${topicTitle} Dynamics`,
+        folder: activeNode ? activeNode.folder : 'Systems Theory',
+        color: '#818cf8',
+        content: `# ${topicTitle} Dynamics\n\nExploration of systemic patterns and relational interactions related to [[${topicTitle}]].\n\n## Vault Connections\n- Linked to [[${activeNode ? activeNode.label : 'Complex Adaptive Systems'}]]\n- Generates feedback loops examined in [[Cybernetics]]`,
+      },
+      {
+        id: `${slug}_substrate`,
+        label: `Substrate Independence`,
+        folder: 'Philosophy of Mind',
+        color: '#f472b6',
+        content: `# Substrate Independence\n\nThe philosophical thesis that mental states and cognitive processes can be realized in multiple physical materials, not just biological brains.\n\n## Connections\n- Foundation for [[Artificial General Intelligence]]\n- Central claim in [[Philosophy of Mind]]`,
+      },
+    ],
+    newEdges: [
+      { source: `${slug}_dynamics`, target: activeNode ? activeNode.id : 'complex_adaptive_systems' },
+      { source: 'substrate_independence', target: 'artificial_general_intelligence' },
+      { source: 'substrate_independence', target: 'philosophy_of_mind' },
+      ...(activeNode ? [{ source: `${slug}_dynamics`, target: 'substrate_independence' }] : []),
+    ],
+  };
+}
+
+// Claude Chat & Graph Expansion endpoint
+app.post('/api/chat', async (req: Request, res: Response) => {
+  const { messages, activeNode, existingNodes = [], apiKey: clientApiKey } = req.body;
+
+  const apiKey = clientApiKey || process.env.ANTHROPIC_API_KEY;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'Messages array is required' });
+  }
+
+  const latestUserMessage = messages[messages.length - 1]?.content || '';
+
+  // If no API key is provided, use high-fidelity intelligent expansion
   if (!apiKey) {
-    return res.status(400).json({
-      error: 'API key is required for live AI extraction. Please provide an API key in the API key panel, or use the built-in sample conversations in guided demo mode.',
+    const fallback = generateFallbackExpansion(latestUserMessage, activeNode, existingNodes);
+    return res.json({
+      role: 'assistant',
+      content: fallback.text,
+      expandedNodes: fallback.newNodes,
+      newEdges: fallback.newEdges,
+      isSimulated: true,
     });
   }
 
-  const selectedProvider = provider || 'openai';
-
+  // Live Anthropic API request
   try {
-    const userPrompt = `Existing knowledge graph node IDs you can link to: [${existingNodeIds.slice(0, 25).join(', ')}]\n\nAnalyze this research text:\n"""\n${text}\n"""`;
+    const existingNodeContext = existingNodes.slice(0, 30).map((n: any) => `- ${n.label} (id: ${n.id}, folder: ${n.folder})`).join('\n');
+    const activeContext = activeNode ? `Currently active/selected note: "${activeNode.label}" (id: ${activeNode.id})` : 'No note currently selected.';
 
-    let rawJsonString = '';
+    const systemPromptWithContext = `${CLAUDE_OBSIDIAN_SYSTEM_PROMPT}\n\nExisting Vault Nodes:\n${existingNodeContext}\n\n${activeContext}`;
 
-    if (selectedProvider === 'openai') {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-        }),
+    const anthropicMessages = messages.map((m: any) => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content,
+    }));
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1500,
+        system: systemPromptWithContext,
+        messages: anthropicMessages,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({
+        error: `Anthropic API error: ${response.status}`,
+        details: errText,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return res.status(response.status).json({
-          error: `OpenAI API returned error: ${response.status}`,
-          details: errorText,
-        });
-      }
-
-      const data = await response.json();
-      rawJsonString = data.choices[0]?.message?.content || '{}';
-    } else if (selectedProvider === 'anthropic') {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 2000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
-          temperature: 0.2,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return res.status(response.status).json({
-          error: `Anthropic API returned error: ${response.status}`,
-          details: errorText,
-        });
-      }
-
-      const data = await response.json();
-      rawJsonString = data.content?.[0]?.text || '{}';
-    } else if (selectedProvider === 'gemini') {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: { response_mime_type: 'application/json' },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return res.status(response.status).json({
-          error: `Gemini API returned error: ${response.status}`,
-          details: errorText,
-        });
-      }
-
-      const data = await response.json();
-      rawJsonString = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    } else {
-      return res.status(400).json({ error: `Unsupported provider: ${selectedProvider}` });
     }
 
-    // Parse result cleanly
-    let parsed;
-    try {
-      parsed = JSON.parse(rawJsonString);
-    } catch {
-      const jsonMatch = rawJsonString.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Failed to parse AI JSON response');
+    const data = await response.json();
+    const fullText = data.content?.[0]?.text || '';
+
+    // Extract graph_expansion JSON block if present
+    let cleanText = fullText;
+    let newNodes: any[] = [];
+    let newEdges: any[] = [];
+
+    const jsonMatch = fullText.match(/```(?:graph_expansion|json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        newNodes = parsed.newNodes || [];
+        newEdges = parsed.newEdges || [];
+        cleanText = fullText.replace(jsonMatch[0], '').trim();
+      } catch {
+        // keep text as is
       }
     }
 
-    // Add status: 'pending' to concepts
-    if (parsed.concepts && Array.isArray(parsed.concepts)) {
-      parsed.concepts = parsed.concepts.map((c: any) => ({
-        ...c,
-        status: 'pending',
-      }));
-    }
-
-    return res.json(parsed);
+    return res.json({
+      role: 'assistant',
+      content: cleanText,
+      expandedNodes: newNodes,
+      newEdges: newEdges,
+      isSimulated: false,
+    });
   } catch (err: any) {
     return res.status(500).json({
-      error: 'Failed to process AI extraction',
+      error: 'Failed to communicate with Claude',
       details: err.message,
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`TESSERA stateless API proxy running on http://localhost:${PORT}`);
+  console.log(`Claude for Obsidian backend running on http://localhost:${PORT}`);
 });
