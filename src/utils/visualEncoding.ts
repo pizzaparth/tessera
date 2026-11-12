@@ -12,66 +12,66 @@ export interface VisualTypeConfig {
 export const CONCEPT_TYPE_CONFIG: Record<ConceptType, VisualTypeConfig> = {
   method: {
     label: 'Method',
-    color: '#00f5a0',
-    bgColor: 'rgba(0, 245, 160, 0.1)',
-    borderColor: 'rgba(0, 245, 160, 0.4)',
-    textColor: '#00f5a0',
+    color: '#059669', // mint / emerald
+    bgColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    textColor: '#047857',
     iconName: 'Wrench',
   },
   model: {
     label: 'Model',
-    color: '#38bdf8',
-    bgColor: 'rgba(56, 189, 248, 0.1)',
-    borderColor: 'rgba(56, 189, 248, 0.4)',
-    textColor: '#38bdf8',
+    color: '#6366f1', // distinctive indigo
+    bgColor: '#eef2ff',
+    borderColor: '#c7d2fe',
+    textColor: '#4338ca',
     iconName: 'Layers',
   },
   dataset: {
     label: 'Dataset',
-    color: '#818cf8',
-    bgColor: 'rgba(129, 140, 248, 0.1)',
-    borderColor: 'rgba(129, 140, 248, 0.4)',
-    textColor: '#818cf8',
+    color: '#0284c7', // sky blue
+    bgColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+    textColor: '#0369a1',
     iconName: 'Database',
   },
   instrument: {
     label: 'Instrument',
-    color: '#2dd4bf',
-    bgColor: 'rgba(45, 212, 191, 0.1)',
-    borderColor: 'rgba(45, 212, 191, 0.4)',
-    textColor: '#2dd4bf',
+    color: '#0d9488', // teal
+    bgColor: '#f0fdfa',
+    borderColor: '#99f6e4',
+    textColor: '#0f766e',
     iconName: 'Coins',
   },
   metric: {
     label: 'Metric',
-    color: '#fbbf24',
-    bgColor: 'rgba(251, 191, 36, 0.1)',
-    borderColor: 'rgba(251, 191, 36, 0.4)',
-    textColor: '#fbbf24',
+    color: '#d97706', // amber
+    bgColor: '#fffbeb',
+    borderColor: '#fde68a',
+    textColor: '#b45309',
     iconName: 'Activity',
   },
   hypothesis: {
     label: 'Hypothesis',
-    color: '#f43f5e',
-    bgColor: 'rgba(244, 63, 94, 0.1)',
-    borderColor: 'rgba(244, 63, 94, 0.4)',
-    textColor: '#f43f5e',
+    color: '#e11d48', // coral / rose
+    bgColor: '#fff1f2',
+    borderColor: '#fecdd3',
+    textColor: '#be123c',
     iconName: 'Sparkles',
   },
   source: {
     label: 'Source',
-    color: '#94a3b8',
-    bgColor: 'rgba(148, 163, 184, 0.1)',
-    borderColor: 'rgba(148, 163, 184, 0.4)',
-    textColor: '#94a3b8',
+    color: '#475569', // slate
+    bgColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    textColor: '#334155',
     iconName: 'BookOpen',
   },
   research_question: {
     label: 'Question',
-    color: '#eab308',
-    bgColor: 'rgba(234, 179, 8, 0.1)',
-    borderColor: 'rgba(234, 179, 8, 0.4)',
-    textColor: '#eab308',
+    color: '#7c3aed', // violet
+    bgColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
+    textColor: '#6d28d9',
     iconName: 'HelpCircle',
   },
 };
@@ -80,21 +80,21 @@ export const RELATIONSHIP_CONFIG: Record<
   RelationshipType,
   { label: string; lineStyle: 'solid' | 'dashed' | 'dotted'; color: string }
 > = {
-  depends_on: { label: 'depends on', lineStyle: 'solid', color: '#38bdf8' },
-  extends: { label: 'extends', lineStyle: 'solid', color: '#00f5a0' },
-  measures: { label: 'measures', lineStyle: 'solid', color: '#fbbf24' },
-  uses_data_from: { label: 'uses data from', lineStyle: 'solid', color: '#818cf8' },
+  depends_on: { label: 'depends on', lineStyle: 'solid', color: '#6366f1' },
+  extends: { label: 'extends', lineStyle: 'solid', color: '#059669' },
+  measures: { label: 'measures', lineStyle: 'solid', color: '#d97706' },
+  uses_data_from: { label: 'uses data from', lineStyle: 'solid', color: '#0284c7' },
   supports: { label: 'supports', lineStyle: 'solid', color: '#10b981' },
   challenges: { label: 'challenges', lineStyle: 'dashed', color: '#f97316' },
-  contradicts: { label: 'contradicts', lineStyle: 'dashed', color: '#ef4444' },
+  contradicts: { label: 'contradicts', lineStyle: 'dashed', color: '#e11d48' },
   related_to: { label: 'related to', lineStyle: 'dotted', color: '#64748b' },
 };
 
 export const DOMAIN_COLORS: Record<ConceptDomain, string> = {
-  'Factor Research': '#38bdf8',
-  'Market Microstructure': '#00f5a0',
-  'Portfolio Construction': '#818cf8',
-  'Time Series & Econometrics': '#fbbf24',
-  'Risk Management': '#f43f5e',
-  'Execution & Trading': '#2dd4bf',
+  'Factor Research': '#6366f1',
+  'Market Microstructure': '#059669',
+  'Portfolio Construction': '#7c3aed',
+  'Time Series & Econometrics': '#d97706',
+  'Risk Management': '#e11d48',
+  'Execution & Trading': '#0284c7',
 };
