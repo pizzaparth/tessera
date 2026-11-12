@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import {
   Folder,
@@ -8,6 +9,7 @@ import {
   Plus,
   BookOpen,
   HelpCircle,
+  Home,
 } from 'lucide-react';
 
 export const VaultRibbon: React.FC = () => {
@@ -94,6 +96,14 @@ export const VaultRibbon: React.FC = () => {
 
       {/* Bottom Settings Icon */}
       <div className="flex flex-col items-center gap-1.5">
+        <Link
+          to="/"
+          className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
+          title="Return to Website"
+        >
+          <Home className="w-4 h-4" />
+        </Link>
+
         <button
           onClick={openHelpModal}
           className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"

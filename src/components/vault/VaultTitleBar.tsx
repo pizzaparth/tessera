@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import {
   GitBranch,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   RotateCcw,
   Layers,
+  ArrowLeft,
 } from 'lucide-react';
 
 export const VaultTitleBar: React.FC = () => {
@@ -33,6 +35,16 @@ export const VaultTitleBar: React.FC = () => {
           <div className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123]" />
           <div className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29]" />
         </div>
+
+        {/* Back to Website button */}
+        <Link
+          to="/"
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition border border-[#222222]"
+          title="Exit demo and return to website"
+        >
+          <ArrowLeft className="w-3 h-3 text-[#9d4edd]" />
+          <span className="hidden sm:inline">Website</span>
+        </Link>
 
         {/* Vault Switcher */}
         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-[#181818] cursor-pointer text-white font-medium transition">

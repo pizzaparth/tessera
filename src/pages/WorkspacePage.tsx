@@ -13,7 +13,7 @@ export const WorkspacePage: React.FC = () => {
   const { activeView } = useWorkspace();
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-black text-white overflow-hidden font-sans">
+    <div className="fixed inset-0 h-screen w-screen flex flex-col bg-black text-white overflow-hidden font-sans select-none z-30">
       {/* 1. Top Title Bar */}
       <VaultTitleBar />
 
