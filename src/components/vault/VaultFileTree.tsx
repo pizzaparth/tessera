@@ -10,6 +10,8 @@ import {
   Search,
   Hash,
   Trash2,
+  Check,
+  X,
 } from 'lucide-react';
 
 export const VaultFileTree: React.FC = () => {
@@ -19,14 +21,25 @@ export const VaultFileTree: React.FC = () => {
     selectNode,
     setActiveView,
     createNote,
-    deleteNote,
+    openDeleteNoteModal,
+    openCreateNoteModal,
     isSidebarOpen,
   } = useWorkspace();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+  const [isInlineCreating, setIsInlineCreating] = useState(false);
+  const [inlineTitle, setInlineTitle] = useState('');
 
   if (!isSidebarOpen) return null;
+
+  const handleInlineCreate = () => {
+    if (inlineTitle.trim()) {
+      createNote(inlineTitle.trim());
+      setInlineTitle('');
+      setIsInlineCreating(false);
+    }
+  };
 
   // Group nodes by folder
   const groupedNodes: Record<string, typeof nodes> = {};
@@ -60,10 +73,7 @@ export const VaultFileTree: React.FC = () => {
             Files & Folders
           </span>
           <button
-            onClick={() => {
-              const title = prompt('Enter title for new note:');
-              if (title && title.trim()) createNote(title.trim());
-            }}
+            onClick={() => setIsInlineCreating(true)}
             className="p-1 hover:text-white hover:bg-[#181818] rounded transition text-[#949494]"
             title="New note"
           >
@@ -86,6 +96,38 @@ export const VaultFileTree: React.FC = () => {
 
       {/* File List Scroll Area */}
       <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+        {/* In-system Inline New Note Input Field */}
+        {isInlineCreating && (
+          <div className="p-1.5 bg-[#121212] border border-[#9d4edd] rounded-md mb-1.5 flex items-center gap-1.5 animate-in fade-in duration-100">
+            <FileText className="w-3.5 h-3.5 text-[#9d4edd] flex-shrink-0" />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Note title (Enter to save)..."
+              value={inlineTitle}
+              onChange={(e) => setInlineTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleInlineCreate();
+                if (e.key === 'Escape') setIsInlineCreating(false);
+              }}
+              className="w-full bg-transparent text-white text-xs outline-none"
+            />
+            <button
+              onClick={handleInlineCreate}
+              className="p-0.5 text-[#00ff88] hover:text-white rounded"
+              title="Save (Enter)"
+            >
+              <Check className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => setIsInlineCreating(false)}
+              className="p-0.5 text-[#949494] hover:text-white rounded"
+              title="Cancel (Esc)"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
         {filteredNodes ? (
           // Search results view
           <div className="space-y-0.5">
@@ -170,9 +212,7 @@ export const VaultFileTree: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm(`Delete "${node.label}"?`)) {
-                                deleteNote(node.id);
-                              }
+                              openDeleteNoteModal(node.id, node.label);
                             }}
                             className="opacity-0 group-hover:opacity-100 p-0.5 text-[#606060] hover:text-[#ff2a85] transition"
                             title="Delete note"
@@ -197,10 +237,7 @@ export const VaultFileTree: React.FC = () => {
           <span>{nodes.length} total notes</span>
         </div>
         <button
-          onClick={() => {
-            const title = prompt('Enter note title:');
-            if (title && title.trim()) createNote(title.trim());
-          }}
+          onClick={() => setIsInlineCreating(true)}
           className="text-[#949494] hover:text-white transition"
         >
           + Note

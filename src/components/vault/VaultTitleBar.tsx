@@ -18,8 +18,8 @@ export const VaultTitleBar: React.FC = () => {
     selectedNode,
     isAIOpen,
     toggleAI,
-    createNote,
-    resetVault,
+    openCreateNoteModal,
+    openResetVaultModal,
     activeModel,
   } = useWorkspace();
 
@@ -74,12 +74,7 @@ export const VaultTitleBar: React.FC = () => {
 
         {/* New Tab (+) */}
         <button
-          onClick={() => {
-            const title = prompt('Enter title for new note:');
-            if (title && title.trim()) {
-              createNote(title.trim());
-            }
-          }}
+          onClick={openCreateNoteModal}
           className="p-1 rounded text-[#949494] hover:text-white hover:bg-[#181818] transition"
           title="New note"
         >
@@ -105,11 +100,7 @@ export const VaultTitleBar: React.FC = () => {
 
         {/* Reset Vault */}
         <button
-          onClick={() => {
-            if (confirm('Reset vault graph to default initial state?')) {
-              resetVault();
-            }
-          }}
+          onClick={openResetVaultModal}
           className="p-1.5 text-[#949494] hover:text-white hover:bg-[#121212] rounded transition"
           title="Reset Vault to default"
         >

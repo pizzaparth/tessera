@@ -18,6 +18,13 @@ interface WorkspaceContextType {
   apiKeys: Record<string, string>;
   statusNotification: string | null;
 
+  // In-System Modal States
+  isCreateNoteModalOpen: boolean;
+  noteToDelete: { id: string; label: string } | null;
+  isResetVaultModalOpen: boolean;
+  isSettingsModalOpen: boolean;
+  isHelpModalOpen: boolean;
+
   // Actions
   selectNode: (id: string | null) => void;
   setActiveView: (view: 'graph' | 'note' | 'split') => void;
@@ -27,6 +34,17 @@ interface WorkspaceContextType {
   updateNodeContent: (id: string, content: string) => void;
   createNote: (title: string, folder?: string) => void;
   deleteNote: (id: string) => void;
+  openCreateNoteModal: () => void;
+  closeCreateNoteModal: () => void;
+  openDeleteNoteModal: (id: string, label: string) => void;
+  closeDeleteNoteModal: () => void;
+  confirmDeleteNote: () => void;
+  openResetVaultModal: () => void;
+  closeResetVaultModal: () => void;
+  openSettingsModal: () => void;
+  closeSettingsModal: () => void;
+  openHelpModal: () => void;
+  closeHelpModal: () => void;
   setGraphSettings: (updates: Partial<GraphEngineSettings>) => void;
   setActiveModel: (model: string, provider: AIProvider) => void;
   setProviderApiKey: (provider: AIProvider, key: string) => void;
@@ -75,6 +93,13 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [activeModel, setActiveModelName] = useState<string>('claude-3-5-sonnet');
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
+
+  // In-system dialog/modal states
+  const [isCreateNoteModalOpen, setIsCreateNoteModalOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<{ id: string; label: string } | null>(null);
+  const [isResetVaultModalOpen, setIsResetVaultModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -157,6 +182,28 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
     if (selectedNodeId === id) setSelectedNodeId(null);
   };
+
+  const openCreateNoteModal = () => setIsCreateNoteModalOpen(true);
+  const closeCreateNoteModal = () => setIsCreateNoteModalOpen(false);
+
+  const openDeleteNoteModal = (id: string, label: string) => setNoteToDelete({ id, label });
+  const closeDeleteNoteModal = () => setNoteToDelete(null);
+  const confirmDeleteNote = () => {
+    if (noteToDelete) {
+      deleteNote(noteToDelete.id);
+      showNotification(`Deleted note: ${noteToDelete.label}`);
+      setNoteToDelete(null);
+    }
+  };
+
+  const openResetVaultModal = () => setIsResetVaultModalOpen(true);
+  const closeResetVaultModal = () => setIsResetVaultModalOpen(false);
+
+  const openSettingsModal = () => setIsSettingsModalOpen(true);
+  const closeSettingsModal = () => setIsSettingsModalOpen(false);
+
+  const openHelpModal = () => setIsHelpModalOpen(true);
+  const closeHelpModal = () => setIsHelpModalOpen(false);
 
   const sendMessageToAI = async (text: string) => {
     if (!text.trim()) return;
@@ -295,6 +342,11 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
         activeModel,
         apiKeys,
         statusNotification,
+        isCreateNoteModalOpen,
+        noteToDelete,
+        isResetVaultModalOpen,
+        isSettingsModalOpen,
+        isHelpModalOpen,
         selectNode,
         setActiveView,
         toggleAI,
@@ -303,6 +355,17 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
         updateNodeContent,
         createNote,
         deleteNote,
+        openCreateNoteModal,
+        closeCreateNoteModal,
+        openDeleteNoteModal,
+        closeDeleteNoteModal,
+        confirmDeleteNote,
+        openResetVaultModal,
+        closeResetVaultModal,
+        openSettingsModal,
+        closeSettingsModal,
+        openHelpModal,
+        closeHelpModal,
         setGraphSettings,
         setActiveModel,
         setProviderApiKey,

@@ -18,7 +18,9 @@ export const VaultRibbon: React.FC = () => {
     toggleAI,
     isSidebarOpen,
     toggleSidebar,
-    createNote,
+    openCreateNoteModal,
+    openSettingsModal,
+    openHelpModal,
   } = useWorkspace();
 
   return (
@@ -66,12 +68,7 @@ export const VaultRibbon: React.FC = () => {
 
         {/* Quick New Note */}
         <button
-          onClick={() => {
-            const title = prompt('Enter note title:');
-            if (title && title.trim()) {
-              createNote(title.trim());
-            }
-          }}
+          onClick={openCreateNoteModal}
           className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
           title="Create new note"
         >
@@ -98,15 +95,7 @@ export const VaultRibbon: React.FC = () => {
       {/* Bottom Settings Icon */}
       <div className="flex flex-col items-center gap-1.5">
         <button
-          onClick={() => {
-            alert(
-              'Brain Vault • Neural Graph & AI\n\n' +
-                '• Left Ribbon: Files, Graph View, Note Editor, AI Assistant\n' +
-                '• Graph Controls: Mouse drag to pan, Scroll to zoom, Click node to inspect, Drag node to reposition\n' +
-                '• Graph Settings: Floating gear icon inside Graph View (Forces, Display, Groups, Filters)\n' +
-                '• Wikilinks: Type [[Note Name]] in any note to automatically create bidirectional connections'
-            );
-          }}
+          onClick={openHelpModal}
           className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
           title="Vault Information & Shortcuts"
         >
@@ -114,15 +103,9 @@ export const VaultRibbon: React.FC = () => {
         </button>
 
         <button
-          onClick={() => {
-            const key = prompt('Configure AI API Key (Anthropic / OpenAI / Gemini / DeepSeek):');
-            if (key !== null) {
-              // Quick helper
-              alert('You can also configure API keys in the AI Assistant side panel under the Key icon or in .env.');
-            }
-          }}
+          onClick={openSettingsModal}
           className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
-          title="Settings"
+          title="Settings & API Keys"
         >
           <Settings className="w-4 h-4" />
         </button>

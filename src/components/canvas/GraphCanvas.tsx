@@ -2,19 +2,12 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { NoteNode, NoteEdge, ColorGroup } from '../../types';
 import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  RotateCcw,
   Sliders,
   X,
   Search,
   Filter,
   Layers,
   Eye,
-  Plus,
-  Play,
-  Pause,
 } from 'lucide-react';
 
 interface SimNode extends NoteNode {
@@ -28,6 +21,7 @@ interface SimNode extends NoteNode {
 }
 
 export const GraphCanvas: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const {
     nodes,
@@ -140,15 +134,16 @@ export const GraphCanvas: React.FC = () => {
         };
       }
 
-      // Arrange new nodes in an organic spiral around center
-      const angle = i * 0.45;
-      const dist = 50 + i * 22;
+      // Arrange new nodes in an organic golden-ratio cluster around center
+      const phi = 1.618033988749895;
+      const angle = i * phi * Math.PI * 2;
+      const dist = 30 + Math.sqrt(i) * 30;
       return {
         ...n,
         x: Math.cos(angle) * dist,
         y: Math.sin(angle) * dist,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
         radius: calculatedRadius,
         degree: deg,
       };
@@ -187,9 +182,19 @@ export const GraphCanvas: React.FC = () => {
       const camera = cameraRef.current;
       const hovered = hoveredNodeRef.current;
 
+      // Guarantee canvas dimensions strictly match rendered container in every frame
+      const rect = canvas.getBoundingClientRect();
+      const pixelRatio = window.devicePixelRatio || 1;
+      const targetWidth = Math.round(rect.width * pixelRatio);
+      const targetHeight = Math.round(rect.height * pixelRatio);
+
+      if (targetWidth > 0 && targetHeight > 0 && (canvas.width !== targetWidth || canvas.height !== targetHeight)) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+
       const width = canvas.width;
       const height = canvas.height;
-      const pixelRatio = window.devicePixelRatio || 1;
 
       // 1. Physics Step (Spring-Electrical Model)
       const { centerForce, repelForce, linkForce, linkDistance } = graphSettings;
@@ -259,10 +264,10 @@ export const GraphCanvas: React.FC = () => {
           }
         }
 
-        // Center gravity pull
+        // Center gravity pull (keeps network well-balanced in viewport)
         if (!n1.isDragging) {
-          n1.vx += (0 - n1.x) * (0.003 * centerForce);
-          n1.vy += (0 - n1.y) * (0.003 * centerForce);
+          n1.vx += (0 - n1.x) * (0.0045 * centerForce);
+          n1.vy += (0 - n1.y) * (0.0045 * centerForce);
 
           // Velocity damping & position update
           n1.vx *= 0.88;
@@ -283,7 +288,9 @@ export const GraphCanvas: React.FC = () => {
       // Apply retina devicePixelRatio & camera zoom/pan transformations
       ctx.save();
       ctx.scale(pixelRatio, pixelRatio);
-      ctx.translate(canvas.clientWidth / 2 + camera.x, canvas.clientHeight / 2 + camera.y);
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      ctx.translate(centerX + camera.x, centerY + camera.y);
       ctx.scale(camera.scale, camera.scale);
 
       // Build active neighborhood set for focus highlighting
@@ -413,21 +420,37 @@ export const GraphCanvas: React.FC = () => {
     };
   }, [graphSettings, getNodeColor, selectedNodeId]);
 
-  // Handle Canvas Resizing with Retina DevicePixelRatio
+  // Handle Canvas Resizing with Retina DevicePixelRatio & ResizeObserver
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
     const updateDimensions = () => {
-      const rect = canvas.getBoundingClientRect();
+      const rect = container.getBoundingClientRect();
       const pixelRatio = window.devicePixelRatio || 1;
-      canvas.width = rect.width * pixelRatio;
-      canvas.height = rect.height * pixelRatio;
+      const targetWidth = Math.round(rect.width * pixelRatio);
+      const targetHeight = Math.round(rect.height * pixelRatio);
+      if (targetWidth > 0 && targetHeight > 0) {
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+        }
+      }
     };
 
     updateDimensions();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+    resizeObserver.observe(container);
+
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, []);
 
   // Helper: Convert canvas mouse coordinate to world space
@@ -556,63 +579,8 @@ export const GraphCanvas: React.FC = () => {
     camera.scale = newScale;
   };
 
-  // Camera toolbar helpers
-  const handleZoomIn = () => {
-    cameraRef.current.scale = Math.min(6.0, cameraRef.current.scale * 1.25);
-  };
-  const handleZoomOut = () => {
-    cameraRef.current.scale = Math.max(0.15, cameraRef.current.scale * 0.8);
-  };
-  const handleFit = () => {
-    cameraRef.current.x = 0;
-    cameraRef.current.y = 0;
-    cameraRef.current.scale = 1.0;
-  };
-  const handleResetForces = () => {
-    simNodesRef.current.forEach((n, i) => {
-      const angle = i * 0.45;
-      const dist = 50 + i * 20;
-      n.x = Math.cos(angle) * dist;
-      n.y = Math.sin(angle) * dist;
-      n.vx = (Math.random() - 0.5) * 4;
-      n.vy = (Math.random() - 0.5) * 4;
-    });
-  };
-
   return (
-    <div className="relative w-full h-full bg-[#000000] overflow-hidden select-none">
-      {/* Floating Canvas Controls (Top Left) */}
-      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-[#0a0a0a]/90 backdrop-blur-md p-1 rounded-xl border border-[#1e1e1e] text-[#a0a0a0] shadow-2xl">
-        <button
-          onClick={handleZoomIn}
-          className="p-1.5 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="p-1.5 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={handleFit}
-          className="p-1.5 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition"
-          title="Center Canvas"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={handleResetForces}
-          className="p-1.5 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition"
-          title="Re-run physics simulation"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
+    <div ref={containerRef} className="relative w-full h-full bg-[#000000] overflow-hidden select-none">
       {/* Floating Graph Settings Drawer Toggle (Top Right) */}
       <div className="absolute top-3 right-3 z-20">
         <button

@@ -7,6 +7,7 @@ import { GraphCanvas } from '../components/canvas/GraphCanvas';
 import { VaultNoteEditor } from '../components/vault/VaultNoteEditor';
 import { AIChatPlugin } from '../components/vault/AIChatPlugin';
 import { VaultStatusBar } from '../components/vault/VaultStatusBar';
+import { VaultModals } from '../components/modals/VaultModals';
 
 export const WorkspacePage: React.FC = () => {
   const { activeView } = useWorkspace();
@@ -56,6 +57,9 @@ export const WorkspacePage: React.FC = () => {
 
       {/* 3. Bottom Status Bar */}
       <VaultStatusBar />
+
+      {/* 4. In-System Dialogs & Modals */}
+      <VaultModals />
     </div>
   );
 };
