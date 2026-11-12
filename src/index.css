@@ -4,19 +4,20 @@
 
 @layer base {
   body {
-    background-color: #1e1e1e;
-    color: #dcddde;
+    background-color: #000000;
+    color: #ffffff;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
+    overflow: hidden;
   }
 }
 
-/* Obsidian-style sleek scrollbars */
+/* AMOLED sleek minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -24,31 +25,32 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.35);
 }
 
-/* Obsidian native graph canvas background */
-.obsidian-graph-canvas {
+/* AMOLED Graph Canvas */
+.amoled-canvas {
   width: 100%;
   height: 100%;
-  background-color: #161616;
+  background-color: #000000;
 }
 
 /* Wikilink style in Markdown */
 .internal-link {
-  color: #7b68ee;
+  color: #a855f7;
   text-decoration: underline;
   text-decoration-style: solid;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .internal-link:hover {
-  color: #9d8df1;
+  color: #c084fc;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
 }

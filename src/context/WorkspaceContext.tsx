@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-import { NoteNode, NoteEdge, ChatMessage, GraphPhysicsSettings } from '../types';
+import { NoteNode, NoteEdge, ChatMessage, GraphEngineSettings, AIProvider } from '../types';
 import { initialVaultNodes, initialVaultEdges } from '../data/sampleGraph';
 
 interface WorkspaceContextType {
@@ -8,34 +8,56 @@ interface WorkspaceContextType {
   selectedNodeId: string | null;
   selectedNode: NoteNode | null;
   activeView: 'graph' | 'note' | 'split';
-  isClaudeOpen: boolean;
+  isAIOpen: boolean;
   isSidebarOpen: boolean;
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
-  graphPhysics: GraphPhysicsSettings;
-  apiKey: string | null;
+  graphSettings: GraphEngineSettings;
+  activeProvider: AIProvider;
+  activeModel: string;
+  apiKeys: Record<string, string>;
   statusNotification: string | null;
 
   // Actions
   selectNode: (id: string | null) => void;
   setActiveView: (view: 'graph' | 'note' | 'split') => void;
-  toggleClaude: () => void;
+  toggleAI: () => void;
   toggleSidebar: () => void;
-  sendMessageToClaude: (text: string) => Promise<void>;
+  sendMessageToAI: (text: string) => Promise<void>;
   updateNodeContent: (id: string, content: string) => void;
   createNote: (title: string, folder?: string) => void;
   deleteNote: (id: string) => void;
-  setGraphPhysics: (updates: Partial<GraphPhysicsSettings>) => void;
-  setApiKey: (key: string | null) => void;
+  setGraphSettings: (updates: Partial<GraphEngineSettings>) => void;
+  setActiveModel: (model: string, provider: AIProvider) => void;
+  setProviderApiKey: (provider: AIProvider, key: string) => void;
   resetVault: () => void;
 }
 
-const initialPhysics: GraphPhysicsSettings = {
-  nodeSize: 22,
-  linkDistance: 130,
-  repelForce: 600,
+const defaultGraphSettings: GraphEngineSettings = {
+  // 1. Filters
+  searchQuery: '',
   showOrphans: true,
-  filterFolder: 'all',
+  showTags: true,
+
+  // 2. Groups
+  groups: [
+    { id: 'g1', query: 'Artificial Intelligence', color: '#9d4edd' }, // Electric Purple
+    { id: 'g2', query: 'Cognitive Science', color: '#00ff88' },       // Neon Mint
+    { id: 'g3', query: 'Philosophy of Mind', color: '#ff2a85' },      // Neon Rose
+    { id: 'g4', query: 'Systems Theory', color: '#00f5ff' },          // Electric Cyan
+  ],
+
+  // 3. Display
+  nodeSizeMultiplier: 1.2,
+  linkThickness: 1.0,
+  textFadeThreshold: 0.5,
+  showArrows: false,
+
+  // 4. Forces (Physics)
+  centerForce: 0.4,
+  repelForce: 450,
+  linkForce: 0.8,
+  linkDistance: 110,
 };
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -45,26 +67,32 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [edges, setEdges] = useState<NoteEdge[]>(initialVaultEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('neural_networks');
   const [activeView, setActiveView] = useState<'graph' | 'note' | 'split'>('graph');
-  const [isClaudeOpen, setIsClaudeOpen] = useState(true);
+  const [isAIOpen, setIsAIOpen] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [graphPhysics, setGraphPhysicsState] = useState<GraphPhysicsSettings>(initialPhysics);
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [graphSettings, setGraphSettingsState] = useState<GraphEngineSettings>(defaultGraphSettings);
+  const [activeProvider, setActiveProvider] = useState<AIProvider>('anthropic');
+  const [activeModel, setActiveModelName] = useState<string>('claude-3-5-sonnet');
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 'init_msg',
       role: 'assistant',
-      content: `Hello! I'm your Claude AI knowledge partner inside Obsidian. 
+      content: `Hello! I am your AI knowledge partner connected directly to your vault graph.
 
-You can ask me to:
-- **Expand on any topic**: I will generate new notes and automatically link them into your graph.
-- **Find connections**: I'll trace how ideas connect across your vault.
-- **Synthesize thoughts**: Select any note and ask me to deepen or challenge it.
+I can reason with frontier models across **Anthropic (Claude)**, **OpenAI (GPT-4o)**, **Google (Gemini)**, and **DeepSeek**.
 
-Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or *"Explore connections between Emergence and Neural Networks"*!`,
+Ask me to explore or expand any thought:
+- *"Expand on how Attention Mechanism connects to Working Memory"*
+- *"What links Emergence, Consciousness, and Neural Networks?"*
+- *"Generate sub-concepts for Complex Adaptive Systems"*
+
+Whenever I identify new concepts and relationships, I'll **dynamically expand your graph in real time**!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      model: 'Claude 3.5 Sonnet',
+      provider: 'anthropic',
     },
   ]);
 
@@ -76,18 +104,29 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
     setStatusNotification(msg);
     setTimeout(() => {
       setStatusNotification((current) => (current === msg ? null : current));
-    }, 4000);
+    }, 4500);
   };
 
   const selectNode = (id: string | null) => {
     setSelectedNodeId(id);
   };
 
-  const toggleClaude = () => setIsClaudeOpen((prev) => !prev);
+  const toggleAI = () => setIsAIOpen((prev) => !prev);
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-  const setGraphPhysics = (updates: Partial<GraphPhysicsSettings>) => {
-    setGraphPhysicsState((prev) => ({ ...prev, ...updates }));
+  const setGraphSettings = (updates: Partial<GraphEngineSettings>) => {
+    setGraphSettingsState((prev) => ({ ...prev, ...updates }));
+  };
+
+  const setActiveModel = (model: string, provider: AIProvider) => {
+    setActiveModelName(model);
+    setActiveProvider(provider);
+    showNotification(`Switched active AI to ${model} (${provider})`);
+  };
+
+  const setProviderApiKey = (provider: AIProvider, key: string) => {
+    setApiKeys((prev) => ({ ...prev, [provider]: key }));
+    showNotification(`API Key saved for ${provider}`);
   };
 
   const updateNodeContent = (id: string, content: string) => {
@@ -102,15 +141,15 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
       id: slug,
       label: title,
       folder,
-      color: '#818cf8',
-      content: `# ${title}\n\nStart writing here or ask Claude to expand on this thought...\n`,
+      color: '#9d4edd',
+      content: `# ${title}\n\nStart writing here or ask the AI to expand this thought with [[Wikilinks]]...\n`,
       tags: ['new'],
       createdAt: new Date().toISOString(),
     };
     setNodes((prev) => [...prev, newNode]);
     setSelectedNodeId(newNode.id);
     setActiveView('note');
-    showNotification(`Created new note: ${title}`);
+    showNotification(`Created note: ${title}`);
   };
 
   const deleteNote = (id: string) => {
@@ -119,7 +158,7 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
     if (selectedNodeId === id) setSelectedNodeId(null);
   };
 
-  const sendMessageToClaude = async (text: string) => {
+  const sendMessageToAI = async (text: string) => {
     if (!text.trim()) return;
 
     const userMsg: ChatMessage = {
@@ -140,7 +179,9 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
           messages: [...chatMessages, userMsg],
           activeNode: selectedNode,
           existingNodes: nodes,
-          apiKey,
+          model: activeModel,
+          provider: activeProvider,
+          apiKey: apiKeys[activeProvider],
         }),
       });
 
@@ -157,11 +198,13 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
         content: data.content,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         expandedNodes: data.expandedNodes,
+        model: activeModel,
+        provider: activeProvider,
       };
 
       setChatMessages((prev) => [...prev, assistantMsg]);
 
-      // If Claude suggested new nodes, expand the graph dynamically!
+      // If AI expanded nodes, add them directly to the graph!
       if (data.expandedNodes && Array.isArray(data.expandedNodes) && data.expandedNodes.length > 0) {
         setNodes((prev) => {
           const existingIds = new Set(prev.map((n) => n.id));
@@ -172,8 +215,8 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
                 id: rawNode.id,
                 label: rawNode.label,
                 folder: rawNode.folder || 'AI Discoveries',
-                color: rawNode.color || '#a78bfa',
-                content: rawNode.content || `# ${rawNode.label}\n\nGenerated by Claude knowledge assistant.`,
+                color: rawNode.color || '#00f5ff',
+                content: rawNode.content || `# ${rawNode.label}\n\nGenerated by AI knowledge expansion.`,
                 createdAt: new Date().toISOString(),
               });
               existingIds.add(rawNode.id);
@@ -203,13 +246,13 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
           });
         }
 
-        showNotification(`✨ Claude expanded your graph (+${data.expandedNodes.length} notes, +${data.newEdges?.length || 0} links)`);
+        showNotification(`✨ Graph Expanded: +${data.expandedNodes.length} notes, +${data.newEdges?.length || 0} connections`);
       }
     } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `Error contacting Claude: ${err.message}. If you have an Anthropic API key, you can enter it in the top settings bar or in \`.env\`.`,
+        content: `Error connecting to ${activeModel} (${activeProvider}): ${err.message}. You can configure your API key in \`.env\` or in the top settings gear.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setChatMessages((prev) => [...prev, errorMsg]);
@@ -223,6 +266,7 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
     setEdges(initialVaultEdges);
     setSelectedNodeId('neural_networks');
     setActiveView('graph');
+    setGraphSettingsState(defaultGraphSettings);
     setChatMessages([
       {
         id: `reset_${Date.now()}`,
@@ -231,7 +275,7 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
-    showNotification('Restored default Obsidian vault');
+    showNotification('Restored default vault knowledge graph');
   };
 
   return (
@@ -242,23 +286,26 @@ Try asking: *"Expand on how Attention Mechanism connects to Working Memory"* or 
         selectedNodeId,
         selectedNode,
         activeView,
-        isClaudeOpen,
+        isAIOpen,
         isSidebarOpen,
         chatMessages,
         isChatLoading,
-        graphPhysics,
-        apiKey,
+        graphSettings,
+        activeProvider,
+        activeModel,
+        apiKeys,
         statusNotification,
         selectNode,
         setActiveView,
-        toggleClaude,
+        toggleAI,
         toggleSidebar,
-        sendMessageToClaude,
+        sendMessageToAI,
         updateNodeContent,
         createNote,
         deleteNote,
-        setGraphPhysics,
-        setApiKey,
+        setGraphSettings,
+        setActiveModel,
+        setProviderApiKey,
         resetVault,
       }}
     >

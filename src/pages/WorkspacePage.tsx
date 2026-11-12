@@ -1,61 +1,61 @@
 import React from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { ObsidianTitleBar } from '../components/obsidian/ObsidianTitleBar';
-import { ObsidianRibbon } from '../components/obsidian/ObsidianRibbon';
-import { ObsidianFileTree } from '../components/obsidian/ObsidianFileTree';
-import { ObsidianGraphView } from '../components/obsidian/ObsidianGraphView';
-import { ObsidianNoteEditor } from '../components/obsidian/ObsidianNoteEditor';
-import { ClaudeChatPlugin } from '../components/obsidian/ClaudeChatPlugin';
-import { ObsidianStatusBar } from '../components/obsidian/ObsidianStatusBar';
+import { VaultTitleBar } from '../components/vault/VaultTitleBar';
+import { VaultRibbon } from '../components/vault/VaultRibbon';
+import { VaultFileTree } from '../components/vault/VaultFileTree';
+import { GraphCanvas } from '../components/canvas/GraphCanvas';
+import { VaultNoteEditor } from '../components/vault/VaultNoteEditor';
+import { AIChatPlugin } from '../components/vault/AIChatPlugin';
+import { VaultStatusBar } from '../components/vault/VaultStatusBar';
 
 export const WorkspacePage: React.FC = () => {
   const { activeView } = useWorkspace();
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-obsidian-bg text-obsidian-text overflow-hidden font-sans">
-      {/* 1. Obsidian Top Title Bar */}
-      <ObsidianTitleBar />
+    <div className="h-screen w-screen flex flex-col bg-black text-white overflow-hidden font-sans">
+      {/* 1. Top Title Bar */}
+      <VaultTitleBar />
 
       {/* 2. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Leftmost Activity Ribbon */}
-        <ObsidianRibbon />
+        <VaultRibbon />
 
         {/* Collapsible File Explorer Sidebar */}
-        <ObsidianFileTree />
+        <VaultFileTree />
 
         {/* Center Main Canvas: Graph View / Note Editor / Split */}
-        <main className="flex-1 flex overflow-hidden relative">
+        <main className="flex-1 flex overflow-hidden relative bg-black">
           {activeView === 'graph' && (
             <div className="w-full h-full">
-              <ObsidianGraphView />
+              <GraphCanvas />
             </div>
           )}
 
           {activeView === 'note' && (
             <div className="w-full h-full">
-              <ObsidianNoteEditor />
+              <VaultNoteEditor />
             </div>
           )}
 
           {activeView === 'split' && (
             <div className="w-full h-full flex">
-              <div className="w-1/2 h-full border-r border-obsidian-border">
-                <ObsidianGraphView />
+              <div className="w-1/2 h-full border-r border-[#1c1c1c]">
+                <GraphCanvas />
               </div>
               <div className="w-1/2 h-full">
-                <ObsidianNoteEditor />
+                <VaultNoteEditor />
               </div>
             </div>
           )}
         </main>
 
-        {/* Rightmost Claude AI Assistant Plugin */}
-        <ClaudeChatPlugin />
+        {/* Rightmost Universal AI Assistant Plugin */}
+        <AIChatPlugin />
       </div>
 
-      {/* 3. Obsidian Bottom Status Bar */}
-      <ObsidianStatusBar />
+      {/* 3. Bottom Status Bar */}
+      <VaultStatusBar />
     </div>
   );
 };

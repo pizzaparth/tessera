@@ -1,8 +1,8 @@
 {
-  "name": "obsidian-claude-vault",
+  "name": "brain-vault",
   "private": true,
   "version": "1.0.0",
-  "description": "Obsidian desktop interface replica with integrated Claude AI assistant plugin for dynamic graph expansion",
+  "description": "Desktop knowledge vault interface with universal AI assistant plugin for dynamic neural graph expansion",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"vite\" \"tsx watch server/index.ts\"",

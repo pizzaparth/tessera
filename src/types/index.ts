@@ -1,3 +1,5 @@
+export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'deepseek' | 'custom';
+
 export interface NoteNode {
   id: string;
   label: string;
@@ -9,6 +11,8 @@ export interface NoteNode {
   updatedAt?: string;
   x?: number;
   y?: number;
+  vx?: number;
+  vy?: number;
 }
 
 export interface NoteEdge {
@@ -17,29 +21,46 @@ export interface NoteEdge {
   target: string;
 }
 
+export interface ColorGroup {
+  id: string;
+  query: string;
+  color: string;
+}
+
+export interface GraphEngineSettings {
+  // 1. Filters
+  searchQuery: string;
+  showOrphans: boolean;
+  showTags: boolean;
+
+  // 2. Color Groups
+  groups: ColorGroup[];
+
+  // 3. Display
+  nodeSizeMultiplier: number;
+  linkThickness: number;
+  textFadeThreshold: number;
+  showArrows: boolean;
+
+  // 4. Forces (Physics)
+  centerForce: number;
+  repelForce: number;
+  linkForce: number;
+  linkDistance: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  model?: string;
+  provider?: AIProvider;
   expandedNodes?: {
     id: string;
     label: string;
     folder: string;
+    color?: string;
+    content?: string;
   }[];
-}
-
-export interface VaultFile {
-  id: string;
-  title: string;
-  folder: string;
-  path: string;
-}
-
-export interface GraphPhysicsSettings {
-  nodeSize: number;
-  linkDistance: number;
-  repelForce: number;
-  showOrphans: boolean;
-  filterFolder: string | 'all';
 }

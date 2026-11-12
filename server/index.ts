@@ -13,17 +13,24 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'online',
-    plugin: 'claude-for-obsidian',
-    hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
+    plugin: 'ai-vault-assistant',
+    availableKeys: {
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      gemini: Boolean(process.env.GEMINI_API_KEY),
+      deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+      custom: Boolean(process.env.CUSTOM_AI_API_KEY),
+    },
+    defaultModel: process.env.DEFAULT_AI_MODEL || 'claude-3-5-sonnet',
     timestamp: new Date().toISOString(),
   });
 });
 
-const CLAUDE_OBSIDIAN_SYSTEM_PROMPT = `You are Claude, an AI knowledge partner integrated directly into Obsidian as an intelligent assistant plugin.
-The user is exploring their Obsidian knowledge vault consisting of interconnected Markdown notes.
+const AI_VAULT_SYSTEM_PROMPT = `You are an AI knowledge partner integrated directly into an interconnected Markdown knowledge vault.
+The user is exploring their knowledge base of linked notes, concepts, and relationships.
 
 Your role:
-1. Respond thoughtfully and concisely to the user's question, brainstorming, or request.
+1. Respond thoughtfully and concisely to the user's question, brainstorming, or synthesis request.
 2. Actively EXPAND the knowledge graph by identifying 1-4 new meaningful concepts/notes that directly build upon the discussion.
 3. Determine how these new concepts link to each other and to existing nodes in the vault.
 
@@ -34,7 +41,7 @@ You must end your response with a JSON block in this exact format:
     {
       "id": "snake_case_unique_id",
       "label": "Human Readable Title",
-      "folder": "Folder Name (e.g. Artificial Intelligence, Cognitive Science, Philosophy, Systems, etc.)",
+      "folder": "Folder Name (e.g. Artificial Intelligence, Cognitive Science, Philosophy of Mind, Systems Theory, etc.)",
       "color": "#818cf8",
       "content": "# Title\\n\\nSummary of concept with [[Existing Note]] wikilinks..."
     }
@@ -48,13 +55,13 @@ You must end your response with a JSON block in this exact format:
 }
 \`\`\``;
 
-// Helper: Intelligent deterministic fallback when no API key is present
-function generateFallbackExpansion(prompt: string, activeNode: any, existingNodes: any[]) {
+// Helper: Intelligent deterministic fallback when no API key is configured
+function generateFallbackExpansion(prompt: string, activeNode: any, existingNodes: any[], modelName = 'Claude 3.5 Sonnet') {
   const lower = prompt.toLowerCase();
   
-  if (lower.includes('transformer') || lower.includes('attention') || lower.includes('language')) {
+  if (lower.includes('transformer') || lower.includes('attention') || lower.includes('language') || lower.includes('llm')) {
     return {
-      text: `The **Transformer Architecture** fundamentally restructured how computational attention operates across discrete token sequences. By replacing recurrent sequential bottlenecks with multi-head self-attention, transformers enable representations to be learned in parallel.\n\nIn relation to your vault:\n- Bridges directly into [[Attention Mechanism]]\n- Serves as the substrate for modern [[Large Language Models]]\n- Parallels associative retrieval in [[Working Memory]]\n\nI have created and linked 3 new nodes to expand your graph.`,
+      text: `The **Transformer Architecture** fundamentally restructured how computational attention operates across discrete token sequences. By replacing recurrent sequential bottlenecks with multi-head self-attention, transformers enable representations to be learned in parallel.\n\nIn relation to your vault:\n- Bridges directly into [[Attention Mechanism]]\n- Serves as the substrate for modern [[Large Language Models]]\n- Parallels associative retrieval in [[Working Memory]]\n\nI have generated 3 new connected notes and added them directly into your knowledge graph.`,
       newNodes: [
         {
           id: 'transformer_architecture',
@@ -68,7 +75,7 @@ function generateFallbackExpansion(prompt: string, activeNode: any, existingNode
           label: 'Multi-Head Attention',
           folder: 'Artificial Intelligence',
           color: '#818cf8',
-          content: `# Multi-Head Attention\n\nMechanism that linearly projects queries, keys, and values $h$ times with different learned projections to attend to information from different representation subspaces at different positions.\n\n## Links\n- Sub-component of [[Transformer Architecture]]\n- Direct extension of [[Attention Mechanism]]`,
+          content: `# Multi-Head Attention\n\nMechanism that linearly projects queries, keys, and values $h$ times with different learned projections to attend to information from different representation subspaces.\n\n## Links\n- Sub-component of [[Transformer Architecture]]\n- Direct extension of [[Attention Mechanism]]`,
         },
         {
           id: 'associative_memory',
@@ -88,9 +95,9 @@ function generateFallbackExpansion(prompt: string, activeNode: any, existingNode
     };
   }
 
-  if (lower.includes('mind') || lower.includes('conscious') || lower.includes('experience') || lower.includes('qualia')) {
+  if (lower.includes('mind') || lower.includes('conscious') || lower.includes('experience') || lower.includes('qualia') || lower.includes('philosophy')) {
     return {
-      text: `When exploring **Consciousness** and the **Philosophy of Mind**, one central development is the **Integrated Information Theory (IIT)** and the **Global Workspace Theory (GWT)**. These frameworks propose mathematical and cognitive explanations for how unified subjective experience arises.\n\nI've integrated these frameworks into your vault and linked them to [[Emergence]] and [[Information Theory]].`,
+      text: `When exploring **Consciousness** and the **Philosophy of Mind**, two major contemporary paradigms stand out: **Integrated Information Theory (IIT)** and **Global Workspace Theory (GWT)**. These frameworks propose mathematical and cognitive explanations for how unified subjective experience arises.\n\nI've integrated these frameworks into your vault and wired them into [[Emergence]] and [[Information Theory]].`,
       newNodes: [
         {
           id: 'integrated_information_theory',
@@ -104,7 +111,7 @@ function generateFallbackExpansion(prompt: string, activeNode: any, existingNode
           label: 'Global Workspace Theory (GWT)',
           folder: 'Cognitive Science',
           color: '#34d399',
-          content: `# Global Workspace Theory (GWT)\n\nA cognitive architecture theory proposed by Bernard Baars and Stanislas Dehaene, modeling consciousness as a theater where information is broadcast globally across brain networks.\n\n## Connections\n- Forms a bridge between [[Cognitive Architecture]] and [[Consciousness]]\n- Mirrors broadcast routing in [[Complex Adaptive Systems]]`,
+          content: `# Global Workspace Theory (GWT)\n\nA cognitive architecture theory modeling consciousness as an informational theater where content is broadcast globally across brain networks.\n\n## Connections\n- Forms a bridge between [[Cognitive Architecture]] and [[Consciousness]]\n- Mirrors broadcast routing in [[Complex Adaptive Systems]]`,
         },
       ],
       newEdges: [
@@ -122,7 +129,7 @@ function generateFallbackExpansion(prompt: string, activeNode: any, existingNode
   const slug = topicTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
   
   return {
-    text: `Based on your exploration of **${topicTitle}**, I have identified new structural connections across your vault.\n\nBy synthesizing these relationships, we can see how ideas propagate between your primary notes. I have added new nodes to your graph and wired them into your active neighborhood.`,
+    text: `Based on your exploration of **${topicTitle}**, I analyzed the relational topology across your vault.\n\nI've synthesized these conceptual bridges and dynamically added new nodes and links into your knowledge graph.`,
     newNodes: [
       {
         id: `${slug}_dynamics`,
@@ -141,18 +148,23 @@ function generateFallbackExpansion(prompt: string, activeNode: any, existingNode
     ],
     newEdges: [
       { source: `${slug}_dynamics`, target: activeNode ? activeNode.id : 'complex_adaptive_systems' },
-      { source: 'substrate_independence', target: 'artificial_general_intelligence' },
-      { source: 'substrate_independence', target: 'philosophy_of_mind' },
-      ...(activeNode ? [{ source: `${slug}_dynamics`, target: 'substrate_independence' }] : []),
+      { source: `${slug}_substrate`, target: 'artificial_general_intelligence' },
+      { source: `${slug}_substrate`, target: 'philosophy_of_mind' },
+      ...(activeNode ? [{ source: `${slug}_dynamics`, target: `${slug}_substrate` }] : []),
     ],
   };
 }
 
-// Claude Chat & Graph Expansion endpoint
+// Universal AI chat endpoint supporting any AI model (Anthropic, OpenAI, Gemini, DeepSeek, or custom endpoint)
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { messages, activeNode, existingNodes = [], apiKey: clientApiKey } = req.body;
-
-  const apiKey = clientApiKey || process.env.ANTHROPIC_API_KEY;
+  const {
+    messages,
+    activeNode,
+    existingNodes = [],
+    model = 'claude-3-5-sonnet',
+    provider = 'anthropic',
+    apiKey: clientApiKey,
+  } = req.body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Messages array is required' });
@@ -160,56 +172,143 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   const latestUserMessage = messages[messages.length - 1]?.content || '';
 
-  // If no API key is provided, use high-fidelity intelligent expansion
+  // Determine provider API Key from client or server environment
+  let apiKey = clientApiKey;
+  let selectedProvider = provider;
+
+  if (model.startsWith('claude')) {
+    selectedProvider = 'anthropic';
+    apiKey = apiKey || process.env.ANTHROPIC_API_KEY;
+  } else if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
+    selectedProvider = 'openai';
+    apiKey = apiKey || process.env.OPENAI_API_KEY;
+  } else if (model.startsWith('gemini')) {
+    selectedProvider = 'gemini';
+    apiKey = apiKey || process.env.GEMINI_API_KEY;
+  } else if (model.startsWith('deepseek')) {
+    selectedProvider = 'deepseek';
+    apiKey = apiKey || process.env.DEEPSEEK_API_KEY;
+  } else {
+    selectedProvider = 'custom';
+    apiKey = apiKey || process.env.CUSTOM_AI_API_KEY;
+  }
+
+  // If no API key is configured, provide zero-friction fallback with graph expansion
   if (!apiKey) {
-    const fallback = generateFallbackExpansion(latestUserMessage, activeNode, existingNodes);
+    const fallback = generateFallbackExpansion(latestUserMessage, activeNode, existingNodes, model);
     return res.json({
       role: 'assistant',
       content: fallback.text,
       expandedNodes: fallback.newNodes,
       newEdges: fallback.newEdges,
+      model,
+      provider: selectedProvider,
       isSimulated: true,
     });
   }
 
-  // Live Anthropic API request
   try {
-    const existingNodeContext = existingNodes.slice(0, 30).map((n: any) => `- ${n.label} (id: ${n.id}, folder: ${n.folder})`).join('\n');
-    const activeContext = activeNode ? `Currently active/selected note: "${activeNode.label}" (id: ${activeNode.id})` : 'No note currently selected.';
+    const existingNodeContext = existingNodes.slice(0, 35).map((n: any) => `- ${n.label} (id: ${n.id}, folder: ${n.folder})`).join('\n');
+    const activeContext = activeNode ? `Currently focused note: "${activeNode.label}" (id: ${activeNode.id})` : 'No note currently selected.';
+    const systemPromptWithContext = `${AI_VAULT_SYSTEM_PROMPT}\n\nExisting Vault Notes:\n${existingNodeContext}\n\n${activeContext}`;
 
-    const systemPromptWithContext = `${CLAUDE_OBSIDIAN_SYSTEM_PROMPT}\n\nExisting Vault Nodes:\n${existingNodeContext}\n\n${activeContext}`;
+    let fullText = '';
 
-    const anthropicMessages = messages.map((m: any) => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content,
-    }));
+    if (selectedProvider === 'anthropic') {
+      const anthropicMessages = messages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      }));
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1500,
-        system: systemPromptWithContext,
-        messages: anthropicMessages,
-        temperature: 0.3,
-      }),
-    });
+      const anthropicModelId = model.includes('3-7')
+        ? 'claude-3-7-sonnet-20250219'
+        : model.includes('haiku')
+        ? 'claude-3-5-haiku-20241022'
+        : 'claude-3-5-sonnet-20241022';
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return res.status(response.status).json({
-        error: `Anthropic API error: ${response.status}`,
-        details: errText,
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: anthropicModelId,
+          max_tokens: 1800,
+          system: systemPromptWithContext,
+          messages: anthropicMessages,
+          temperature: 0.3,
+        }),
       });
-    }
 
-    const data = await response.json();
-    const fullText = data.content?.[0]?.text || '';
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(response.status).json({ error: `Anthropic API error: ${response.status}`, details: errText });
+      }
+
+      const data = await response.json();
+      fullText = data.content?.[0]?.text || '';
+    } else if (selectedProvider === 'openai' || selectedProvider === 'deepseek' || selectedProvider === 'custom') {
+      const baseUrl = selectedProvider === 'deepseek'
+        ? 'https://api.deepseek.com/v1/chat/completions'
+        : process.env.CUSTOM_AI_BASE_URL || 'https://api.openai.com/v1/chat/completions';
+
+      const openAiMessages = [
+        { role: 'system', content: systemPromptWithContext },
+        ...messages.map((m: any) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+        })),
+      ];
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: model || 'gpt-4o',
+          messages: openAiMessages,
+          temperature: 0.3,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(response.status).json({ error: `${selectedProvider} API error: ${response.status}`, details: errText });
+      }
+
+      const data = await response.json();
+      fullText = data.choices?.[0]?.message?.content || '';
+    } else if (selectedProvider === 'gemini') {
+      const geminiModel = model.includes('pro') ? 'gemini-1.5-pro' : 'gemini-2.0-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+
+      const contents = messages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPromptWithContext }] },
+          contents: contents,
+          generationConfig: { temperature: 0.3 },
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(response.status).json({ error: `Gemini API error: ${response.status}`, details: errText });
+      }
+
+      const data = await response.json();
+      fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
 
     // Extract graph_expansion JSON block if present
     let cleanText = fullText;
@@ -224,7 +323,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         newEdges = parsed.newEdges || [];
         cleanText = fullText.replace(jsonMatch[0], '').trim();
       } catch {
-        // keep text as is
+        // preserve text if JSON parse fails
       }
     }
 
@@ -233,16 +332,18 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       content: cleanText,
       expandedNodes: newNodes,
       newEdges: newEdges,
+      model,
+      provider: selectedProvider,
       isSimulated: false,
     });
   } catch (err: any) {
     return res.status(500).json({
-      error: 'Failed to communicate with Claude',
+      error: 'Failed to communicate with AI model',
       details: err.message,
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Claude for Obsidian backend running on http://localhost:${PORT}`);
+  console.log(`Universal AI Knowledge Vault backend running on http://localhost:${PORT}`);
 });
