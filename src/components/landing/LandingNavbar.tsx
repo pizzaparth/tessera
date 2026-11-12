@@ -41,18 +41,12 @@ export const LandingNavbar: React.FC = () => {
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#eaecf0] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-[#6d55bd] flex items-center justify-center text-white shadow-sm group-hover:bg-[#5b45a3] transition">
-              <Layers className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-base tracking-tight text-[#100f12]">
-                Brain Vault
-              </span>
-              <span className="text-[10px] text-[#65646e] font-medium -mt-1 tracking-wider uppercase">
-                Neural Graph AI
-              </span>
-            </div>
+          <Link to="/" className="flex items-center gap-2 group">
+            <img
+              src="/assets/rootly/rootly-full-logo-black.svg"
+              alt="Rootly"
+              className="h-7 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Nav Links */}

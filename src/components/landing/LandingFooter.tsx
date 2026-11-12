@@ -39,11 +39,12 @@ export const LandingFooter: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand info */}
           <div className="col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#6d55bd] flex items-center justify-center text-white">
-                <Layers className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-base text-[#100f12]">Brain Vault</span>
+            <Link to="/" className="flex items-center gap-2">
+              <img
+                src="/assets/rootly/rootly-full-logo-black.svg"
+                alt="Rootly"
+                className="h-6 w-auto object-contain"
+              />
             </Link>
             <p className="text-xs text-[#65646e] max-w-sm leading-relaxed">
               The AI-native personal knowledge base and 2D canvas graph engine.
