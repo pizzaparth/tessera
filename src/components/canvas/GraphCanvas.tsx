@@ -1,14 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { NoteNode, NoteEdge, ColorGroup } from '../../types';
-import {
-  Sliders,
-  X,
-  Search,
-  Filter,
-  Layers,
-  Eye,
-} from 'lucide-react';
+import { Sliders, X, Search, Plus, Minus, Maximize2, FileText, Sparkles, MousePointerClick } from 'lucide-react';
 
 interface SimNode extends NoteNode {
   x: number;
@@ -20,7 +13,10 @@ interface SimNode extends NoteNode {
   isDragging?: boolean;
 }
 
-export const GraphCanvas: React.FC = () => {
+const MIN_SCALE = 0.15;
+const MAX_SCALE = 6;
+
+export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const {
@@ -28,10 +24,15 @@ export const GraphCanvas: React.FC = () => {
     edges,
     selectedNodeId,
     selectNode,
-    setActiveView,
+    openNote,
     graphSettings,
     setGraphSettings,
+    sendMessageToAI,
+    isChatLoading,
   } = useWorkspace();
+
+  const [showHint, setShowHint] = useState(true);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTabSetting, setActiveTabSetting] = useState<'filters' | 'groups' | 'display' | 'forces'>('forces');
@@ -46,7 +47,13 @@ export const GraphCanvas: React.FC = () => {
     panStartY: 0,
     camStartX: 0,
     camStartY: 0,
+    // Animated camera target (smooth zoom / fit / focus)
+    target: null as null | { x: number; y: number; scale: number },
   });
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  const selectionFromCanvasRef = useRef(false);
+  const hasAutoFitRef = useRef(false);
+  const userMovedCameraRef = useRef(false);
 
   // Physics simulation state
   const simNodesRef = useRef<SimNode[]>([]);
@@ -196,6 +203,20 @@ export const GraphCanvas: React.FC = () => {
       const width = canvas.width;
       const height = canvas.height;
 
+      // 0. Ease camera toward its animation target
+      if (camera.target) {
+        const t = camera.target;
+        camera.x += (t.x - camera.x) * 0.18;
+        camera.y += (t.y - camera.y) * 0.18;
+        camera.scale += (t.scale - camera.scale) * 0.18;
+        if (Math.abs(t.x - camera.x) < 0.5 && Math.abs(t.y - camera.y) < 0.5 && Math.abs(t.scale - camera.scale) < 0.002) {
+          camera.x = t.x;
+          camera.y = t.y;
+          camera.scale = t.scale;
+          camera.target = null;
+        }
+      }
+
       // 1. Physics Step (Spring-Electrical Model)
       const { centerForce, repelForce, linkForce, linkDistance } = graphSettings;
       const dt = 0.85; // Time step
@@ -294,7 +315,8 @@ export const GraphCanvas: React.FC = () => {
       ctx.scale(camera.scale, camera.scale);
 
       // Build active neighborhood set for focus highlighting
-      const activeId = selectedNodeId || (hovered ? hovered.id : null);
+      // Hover previews a neighbourhood; otherwise highlight the selected note's
+      const activeId = hovered ? hovered.id : selectedNodeId;
       const neighborIds = new Set<string>();
       if (activeId) {
         neighborIds.add(activeId);
@@ -325,9 +347,9 @@ export const GraphCanvas: React.FC = () => {
           ctx.shadowBlur = 8;
         } else if (activeId) {
           // Dim unconnected wires
-          ctx.strokeStyle = '#222222';
+          ctx.strokeStyle = '#3a3a3a';
           ctx.lineWidth = baseEdgeWidth * 0.7;
-          ctx.globalAlpha = 0.08;
+          ctx.globalAlpha = 0.18;
           ctx.shadowBlur = 0;
         } else {
           // Default sleek thin wires
@@ -352,7 +374,7 @@ export const GraphCanvas: React.FC = () => {
         const isConnectedNeighbor = neighborIds.has(node.id);
         const nodeColor = getNodeColor(node);
 
-        const nodeAlpha = activeId ? (isConnectedNeighbor ? 1 : 0.12) : 0.92;
+        const nodeAlpha = activeId ? (isConnectedNeighbor ? 1 : 0.22) : 0.92;
         ctx.globalAlpha = nodeAlpha;
 
         // Selection / Hover pulsing halo ring
@@ -388,7 +410,7 @@ export const GraphCanvas: React.FC = () => {
         const shouldShowLabel =
           isSelected || isHovered || currentScale >= textThreshold || (activeId && isConnectedNeighbor);
 
-        if (shouldShowLabel && nodeAlpha > 0.15) {
+        if (shouldShowLabel && nodeAlpha > 0.3) {
           ctx.font = isSelected
             ? '600 12px Inter, sans-serif'
             : isHovered
@@ -483,108 +505,233 @@ export const GraphCanvas: React.FC = () => {
     return null;
   }, []);
 
-  // Mouse Interaction Handlers: Pan, Zoom, Drag, Hover, Click
+  // ---- Camera helpers -------------------------------------------------
+  const getViewSize = () => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    return { w: rect?.width || 1, h: rect?.height || 1 };
+  };
+
+  const animateCamera = (x: number, y: number, scale: number) => {
+    cameraRef.current.target = { x, y, scale: Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)) };
+  };
+
+  /** Zoom around the view center by a factor. */
+  const zoomBy = (factor: number) => {
+    userMovedCameraRef.current = true;
+    const cam = cameraRef.current;
+    const base = cam.target ?? { x: cam.x, y: cam.y, scale: cam.scale };
+    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, base.scale * factor));
+    const k = scale / base.scale;
+    animateCamera(base.x * k, base.y * k, scale);
+  };
+
+  /** Frame every visible node in the viewport. */
+  const fitView = useCallback(() => {
+    const simNodes = simNodesRef.current;
+    if (!simNodes.length) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of simNodes) {
+      minX = Math.min(minX, n.x - n.radius);
+      maxX = Math.max(maxX, n.x + n.radius + 90); // leave room for labels
+      minY = Math.min(minY, n.y - n.radius);
+      maxY = Math.max(maxY, n.y + n.radius);
+    }
+    const { w, h } = getViewSize();
+    const pad = 60;
+    const scale = Math.min((w - pad * 2) / Math.max(1, maxX - minX), (h - pad * 2) / Math.max(1, maxY - minY), 1.6);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    animateCamera(-cx * scale, -cy * scale, scale);
+  }, []);
+
+  // Keep the graph framed while the physics settles, until the user takes over
+  useEffect(() => {
+    const timers = [300, 800, 1500, 2400].map((ms) =>
+      window.setTimeout(() => {
+        if (!userMovedCameraRef.current) fitView();
+      }, ms)
+    );
+    const done = window.setTimeout(() => (hasAutoFitRef.current = true), 2500);
+    return () => [...timers, done].forEach((t) => window.clearTimeout(t));
+  }, [fitView]);
+
+  // When a note is selected elsewhere (file tree, search), bring it into view
+  useEffect(() => {
+    if (!selectedNodeId || !hasAutoFitRef.current) return;
+    if (selectionFromCanvasRef.current) {
+      selectionFromCanvasRef.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const node = simNodesRef.current.find((n) => n.id === selectedNodeId);
+      if (!node) return;
+      const cam = cameraRef.current;
+      const { w, h } = getViewSize();
+      const sx = node.x * cam.scale + cam.x;
+      const sy = node.y * cam.scale + cam.y;
+      const margin = 80;
+      if (Math.abs(sx) > w / 2 - margin || Math.abs(sy) > h / 2 - margin) {
+        animateCamera(-node.x * cam.scale, -node.y * cam.scale, cam.scale);
+      }
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [selectedNodeId]);
+
+  // ---- Pointer interaction: pan, drag, hover, click ---------------------
+  const endPointerInteraction = useCallback(() => {
+    if (draggedNodeRef.current) {
+      draggedNodeRef.current.isDragging = false;
+      draggedNodeRef.current = null;
+    }
+    cameraRef.current.isPanning = false;
+    if (canvasRef.current) canvasRef.current.style.cursor = 'default';
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return; // Left click only
+    if (e.button !== 0) return;
+    setShowHint(false);
+    userMovedCameraRef.current = true;
+    cameraRef.current.target = null;
+    pointerDownRef.current = { x: e.clientX, y: e.clientY };
     const world = screenToWorld(e.clientX, e.clientY);
     const hitNode = findNodeAtPos(world.x, world.y);
 
     if (hitNode) {
       draggedNodeRef.current = hitNode;
       hitNode.isDragging = true;
-      hitNode.x = world.x;
-      hitNode.y = world.y;
     } else {
       cameraRef.current.isPanning = true;
       cameraRef.current.panStartX = e.clientX;
       cameraRef.current.panStartY = e.clientY;
       cameraRef.current.camStartX = cameraRef.current.x;
       cameraRef.current.camStartY = cameraRef.current.y;
+      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const world = screenToWorld(e.clientX, e.clientY);
 
-    // Node dragging
     if (draggedNodeRef.current) {
       draggedNodeRef.current.x = world.x;
       draggedNodeRef.current.y = world.y;
       draggedNodeRef.current.vx = 0;
       draggedNodeRef.current.vy = 0;
+      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
       return;
     }
 
-    // Camera panning
     if (cameraRef.current.isPanning) {
-      const dx = e.clientX - cameraRef.current.panStartX;
-      const dy = e.clientY - cameraRef.current.panStartY;
-      cameraRef.current.x = cameraRef.current.camStartX + dx;
-      cameraRef.current.y = cameraRef.current.camStartY + dy;
+      cameraRef.current.x = cameraRef.current.camStartX + (e.clientX - cameraRef.current.panStartX);
+      cameraRef.current.y = cameraRef.current.camStartY + (e.clientY - cameraRef.current.panStartY);
       return;
     }
 
-    // Hover detection
     const hitNode = findNodeAtPos(world.x, world.y);
     hoveredNodeRef.current = hitNode;
-    if (canvasRef.current) {
-      canvasRef.current.style.cursor = hitNode ? 'pointer' : 'default';
-    }
+    if (canvasRef.current) canvasRef.current.style.cursor = hitNode ? 'pointer' : 'grab';
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const down = pointerDownRef.current;
+    const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4 : false;
+    pointerDownRef.current = null;
+
     if (draggedNodeRef.current) {
       const dragged = draggedNodeRef.current;
-      dragged.isDragging = false;
-      draggedNodeRef.current = null;
-      // If mouse barely moved, treat as node select click
-      selectNode(dragged.id);
-    } else if (cameraRef.current.isPanning) {
-      const dx = Math.abs(e.clientX - cameraRef.current.panStartX);
-      const dy = Math.abs(e.clientY - cameraRef.current.panStartY);
-      cameraRef.current.isPanning = false;
-      if (dx < 4 && dy < 4) {
-        selectNode(null);
+      if (!moved) {
+        selectionFromCanvasRef.current = true;
+        selectNode(dragged.id);
       }
+    } else if (cameraRef.current.isPanning && !moved) {
+      selectNode(null);
     }
+    endPointerInteraction();
   };
 
-  // Double click node to open note view directly
+  // Releasing the mouse outside the canvas must not leave a drag/pan stuck
+  useEffect(() => {
+    window.addEventListener('mouseup', endPointerInteraction);
+    return () => window.removeEventListener('mouseup', endPointerInteraction);
+  }, [endPointerInteraction]);
+
+  const handleMouseLeave = () => {
+    hoveredNodeRef.current = null;
+  };
+
   const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const world = screenToWorld(e.clientX, e.clientY);
     const hitNode = findNodeAtPos(world.x, world.y);
     if (hitNode) {
-      selectNode(hitNode.id);
-      setActiveView('note');
+      selectionFromCanvasRef.current = true;
+      openNote(hitNode.id);
     }
   };
 
-  // Cursor-centered smooth mouse wheel zoom
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
+  // Cursor-centered wheel zoom. Registered natively because React's wheel
+  // listener is passive and cannot prevent page scroll / pinch zoom.
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setShowHint(false);
+      userMovedCameraRef.current = true;
+      const camera = cameraRef.current;
+      camera.target = null;
+      // Trackpads send small deltas; scale the zoom with the delta for smoothness
+      const zoomFactor = Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.004);
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, camera.scale * zoomFactor));
+      const k = newScale / camera.scale;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left - rect.width / 2;
+      const mouseY = e.clientY - rect.top - rect.height / 2;
+      camera.x = mouseX - (mouseX - camera.x) * k;
+      camera.y = mouseY - (mouseY - camera.y) * k;
+      camera.scale = newScale;
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, []);
 
-    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-    const camera = cameraRef.current;
-    const newScale = Math.max(0.15, Math.min(6.0, camera.scale * zoomFactor));
+  // Close the graph settings popover on Escape or outside click
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setIsSettingsOpen(false);
+    const onDown = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setIsSettingsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [isSettingsOpen]);
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - rect.width / 2;
-    const mouseY = e.clientY - rect.top - rect.height / 2;
+  // ---- Selected note summary -------------------------------------------
+  const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
+  const selectedLinks = useMemo(() => {
+    if (!selectedNodeId) return [];
+    const ids = new Set<string>();
+    edges.forEach((e) => {
+      if (e.source === selectedNodeId) ids.add(e.target);
+      if (e.target === selectedNodeId) ids.add(e.source);
+    });
+    return nodes.filter((n) => ids.has(n.id));
+  }, [selectedNodeId, nodes, edges]);
 
-    // Zoom centered on cursor position
-    camera.x -= (mouseX - camera.x) * (zoomFactor - 1);
-    camera.y -= (mouseY - camera.y) * (zoomFactor - 1);
-    camera.scale = newScale;
-  };
+  const visibleCount = visibleNodesAndEdges.filteredNodes.length;
+  const isFiltered = visibleCount !== nodes.length;
 
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#000000] overflow-hidden select-none">
       {/* Floating Graph Settings Drawer Toggle (Top Right) */}
-      <div className="absolute top-3 right-3 z-20">
+      <div ref={settingsRef} className="absolute top-3 right-3 z-20">
         <button
           onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          aria-label="Graph settings"
+          aria-expanded={isSettingsOpen}
           className={`p-2 rounded-xl border backdrop-blur-md transition shadow-2xl ${
             isSettingsOpen
               ? 'bg-[#9d4edd]/25 text-[#9d4edd] border-[#9d4edd]/50'
@@ -748,9 +895,6 @@ export const GraphCanvas: React.FC = () => {
                   />
                 </div>
 
-                <div className="pt-2 border-t border-[#1e1e1e] text-[10px] text-[#666666] italic">
-                  Note: Connecting wires are clean and unlabeled.
-                </div>
               </div>
             )}
 
@@ -815,10 +959,139 @@ export const GraphCanvas: React.FC = () => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onDoubleClick={handleDoubleClick}
-        onWheel={handleWheel}
-        className="w-full h-full block cursor-default"
+        className="w-full h-full block cursor-grab"
+        role="img"
+        aria-label={`Knowledge graph with ${visibleCount} notes. Use the file list or search to open notes.`}
       />
+
+      {/* Top-left: active filter / color legend */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none">
+        {isFiltered && (
+          <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-[#262626] bg-[#0a0a0a]/90 backdrop-blur px-2.5 py-1.5 text-[11px] text-[#c4c4c4]">
+            <Search className="w-3 h-3 text-[#8a8a8a]" />
+            Showing {visibleCount} of {nodes.length} notes
+            <button
+              onClick={() => setGraphSettings({ searchQuery: '', showOrphans: true })}
+              className="text-[#b57aed] hover:text-white"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+        {!compact && (
+          <div className="hidden md:flex flex-col gap-1 rounded-lg border border-[#1c1c1c] bg-[#050505]/80 backdrop-blur px-2.5 py-2">
+            {graphSettings.groups.map((g) => (
+              <div key={g.id} className="flex items-center gap-2 text-[10px] text-[#a3a3a3]">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.color }} />
+                {g.query}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom-right: zoom controls */}
+      <div className="absolute bottom-3 right-3 z-10 flex flex-col rounded-lg border border-[#222222] bg-[#0a0a0a]/90 backdrop-blur overflow-hidden">
+        {[
+          { label: 'Zoom in', icon: Plus, onClick: () => zoomBy(1.3) },
+          { label: 'Zoom out', icon: Minus, onClick: () => zoomBy(1 / 1.3) },
+          { label: 'Fit graph to view', icon: Maximize2, onClick: fitView },
+        ].map(({ label, icon: Icon, onClick }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            className="p-2 text-[#a3a3a3] hover:text-white hover:bg-[#181818] transition-colors border-b border-[#1c1c1c] last:border-b-0"
+            title={label}
+            aria-label={label}
+          >
+            <Icon className="w-3.5 h-3.5" />
+          </button>
+        ))}
+      </div>
+
+      {/* Bottom-left: selected note card, or a first-run hint */}
+      {selectedNode ? (
+        <div
+          key={selectedNode.id}
+          className="absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-72px))] rounded-xl border border-[#262626] bg-[#0a0a0a]/95 backdrop-blur p-3 shadow-2xl vault-pop-in"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-[#7c7c7c] truncate">{selectedNode.folder}</div>
+              <div className="text-sm font-semibold text-white truncate">{selectedNode.label}</div>
+            </div>
+            <button
+              onClick={() => selectNode(null)}
+              className="p-1 -m-1 rounded text-[#7c7c7c] hover:text-white"
+              aria-label="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="mt-1.5 text-[11px] text-[#8a8a8a]">
+            {selectedLinks.length === 0
+              ? 'No connections yet'
+              : `${selectedLinks.length} connection${selectedLinks.length === 1 ? '' : 's'}`}
+          </div>
+          {selectedLinks.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {selectedLinks.slice(0, 4).map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => selectNode(n.id)}
+                  className="max-w-[130px] truncate rounded-full border border-[#262626] bg-[#121212] px-2 py-0.5 text-[10px] text-[#c4c4c4] hover:border-[#9d4edd]/60 hover:text-white transition-colors"
+                >
+                  {n.label}
+                </button>
+              ))}
+              {selectedLinks.length > 4 && (
+                <span className="px-1 py-0.5 text-[10px] text-[#7c7c7c]">+{selectedLinks.length - 4}</span>
+              )}
+            </div>
+          )}
+          <div className="mt-3 flex gap-1.5">
+            {!compact && (
+              <button
+                onClick={() => openNote(selectedNode.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-md bg-[#9d4edd] hover:bg-[#8b3bd6] px-2 py-1.5 text-[11px] font-medium text-white transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Open note
+              </button>
+            )}
+            <button
+              onClick={() =>
+                sendMessageToAI(
+                  `Explore and expand on [[${selectedNode.label}]]. What new concepts or cross-disciplinary connections should be linked in the vault?`
+                )
+              }
+              disabled={isChatLoading}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-md border border-[#9d4edd]/40 bg-[#141414] hover:bg-[#1c1c1c] px-2 py-1.5 text-[11px] font-medium text-[#c9a4f2] hover:text-white disabled:opacity-50 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Expand with AI
+            </button>
+          </div>
+        </div>
+      ) : (
+        showHint && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 hidden sm:flex items-center gap-2 rounded-full border border-[#222222] bg-[#0a0a0a]/90 backdrop-blur px-3 py-1.5 text-[11px] text-[#a3a3a3] vault-fade-in">
+            <MousePointerClick className="w-3.5 h-3.5 text-[#b57aed]" />
+            Click a node to select · double-click to open · scroll to zoom · drag to pan
+          </div>
+        )
+      )}
+
+      {/* Empty state */}
+      {visibleCount === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center text-[#8a8a8a] text-xs">
+            {nodes.length === 0 ? 'No notes yet. Create one to start your graph.' : 'No notes match the current filter.'}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

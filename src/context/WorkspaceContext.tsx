@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { NoteNode, NoteEdge, ChatMessage, GraphEngineSettings, AIProvider } from '../types';
 import { initialVaultNodes, initialVaultEdges } from '../data/sampleGraph';
 
@@ -15,24 +15,27 @@ interface WorkspaceContextType {
   graphSettings: GraphEngineSettings;
   activeProvider: AIProvider;
   activeModel: string;
-  apiKeys: Record<string, string>;
   statusNotification: string | null;
 
   // In-System Modal States
   isCreateNoteModalOpen: boolean;
   noteToDelete: { id: string; label: string } | null;
   isResetVaultModalOpen: boolean;
-  isSettingsModalOpen: boolean;
   isHelpModalOpen: boolean;
+  isQuickSwitcherOpen: boolean;
 
   // Actions
   selectNode: (id: string | null) => void;
+  openNote: (id: string) => void;
+  openQuickSwitcher: () => void;
+  closeQuickSwitcher: () => void;
+  showNotification: (msg: string) => void;
   setActiveView: (view: 'graph' | 'note' | 'split') => void;
   toggleAI: () => void;
   toggleSidebar: () => void;
   sendMessageToAI: (text: string) => Promise<void>;
   updateNodeContent: (id: string, content: string) => void;
-  createNote: (title: string, folder?: string) => void;
+  createNote: (title: string, folder?: string) => string;
   deleteNote: (id: string) => void;
   openCreateNoteModal: () => void;
   closeCreateNoteModal: () => void;
@@ -41,13 +44,10 @@ interface WorkspaceContextType {
   confirmDeleteNote: () => void;
   openResetVaultModal: () => void;
   closeResetVaultModal: () => void;
-  openSettingsModal: () => void;
-  closeSettingsModal: () => void;
   openHelpModal: () => void;
   closeHelpModal: () => void;
   setGraphSettings: (updates: Partial<GraphEngineSettings>) => void;
   setActiveModel: (model: string, provider: AIProvider) => void;
-  setProviderApiKey: (provider: AIProvider, key: string) => void;
   resetVault: () => void;
 }
 
@@ -78,45 +78,99 @@ const defaultGraphSettings: GraphEngineSettings = {
   linkDistance: 110,
 };
 
+const STORAGE_KEY = 'brain-vault:v1';
+
+interface PersistedVault {
+  nodes: NoteNode[];
+  edges: NoteEdge[];
+  graphSettings: GraphEngineSettings;
+  selectedNodeId: string | null;
+}
+
+const loadPersisted = (): Partial<PersistedVault> => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<PersistedVault>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const isWide = (minWidth: number) =>
+  typeof window === 'undefined' ? true : window.innerWidth >= minWidth;
+
+const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/** Extract the unique [[Wikilink]] targets (lower-cased) from markdown. */
+export const extractWikilinks = (markdown: string): string[] => {
+  const found = new Set<string>();
+  const re = /\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown))) found.add(m[1].trim().toLowerCase());
+  return [...found];
+};
+
+export const findNodeByTitle = (nodes: NoteNode[], title: string) => {
+  const t = title.trim().toLowerCase();
+  return nodes.find((n) => n.label.toLowerCase() === t || n.id === t.replace(/[^a-z0-9]/g, '_'));
+};
+
+const WELCOME_MESSAGE = `Hi! I'm connected to your vault graph. Ask me to explore a note, connect ideas, or propose new concepts. New notes I suggest are **added to your graph automatically**.
+
+Try:
+- *"How does Attention Mechanism relate to Working Memory?"*
+- *"What links Emergence and Consciousness?"*
+- *"Suggest sub-concepts for Complex Adaptive Systems"*`;
+
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [nodes, setNodes] = useState<NoteNode[]>(initialVaultNodes);
-  const [edges, setEdges] = useState<NoteEdge[]>(initialVaultEdges);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('neural_networks');
+  const [persisted] = useState(loadPersisted);
+  const [nodes, setNodes] = useState<NoteNode[]>(persisted.nodes ?? initialVaultNodes);
+  const [edges, setEdges] = useState<NoteEdge[]>(persisted.edges ?? initialVaultEdges);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    persisted.selectedNodeId !== undefined ? persisted.selectedNodeId : 'neural_networks'
+  );
   const [activeView, setActiveView] = useState<'graph' | 'note' | 'split'>('graph');
-  const [isAIOpen, setIsAIOpen] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isAIOpen, setIsAIOpen] = useState(() => isWide(1280));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => isWide(900));
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [graphSettings, setGraphSettingsState] = useState<GraphEngineSettings>(defaultGraphSettings);
+  const [graphSettings, setGraphSettingsState] = useState<GraphEngineSettings>({
+    ...defaultGraphSettings,
+    ...persisted.graphSettings,
+    searchQuery: '',
+  });
   const [activeProvider, setActiveProvider] = useState<AIProvider>('anthropic');
-  const [activeModel, setActiveModelName] = useState<string>('claude-3-5-sonnet');
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [activeModel, setActiveModelName] = useState<string>('claude-sonnet-5-5');
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
 
   // In-system dialog/modal states
   const [isCreateNoteModalOpen, setIsCreateNoteModalOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<{ id: string; label: string } | null>(null);
   const [isResetVaultModalOpen, setIsResetVaultModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false);
+
+  // Persist the vault locally so edits survive a page reload
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      try {
+        const data: PersistedVault = { nodes, edges, graphSettings, selectedNodeId };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch {
+        /* storage unavailable: keep working in memory */
+      }
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [nodes, edges, graphSettings, selectedNodeId]);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 'init_msg',
       role: 'assistant',
-      content: `Hello! I am your AI knowledge partner connected directly to your vault graph.
-
-I can reason with frontier models across **Anthropic (Claude)**, **OpenAI (GPT-4o)**, **Google (Gemini)**, and **DeepSeek**.
-
-Ask me to explore or expand any thought:
-- *"Expand on how Attention Mechanism connects to Working Memory"*
-- *"What links Emergence, Consciousness, and Neural Networks?"*
-- *"Generate sub-concepts for Complex Adaptive Systems"*
-
-Whenever I identify new concepts and relationships, I'll **dynamically expand your graph in real time**!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      model: 'Claude 3.5 Sonnet',
+      content: WELCOME_MESSAGE,
+      timestamp: timeNow(),
+      model: 'Claude Sonnet 5.5',
       provider: 'anthropic',
     },
   ]);
@@ -136,6 +190,15 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
     setSelectedNodeId(id);
   };
 
+  // Select a note and make sure it is visible (keeps split view if active)
+  const openNote = (id: string) => {
+    setSelectedNodeId(id);
+    setActiveView((view) => (view === 'graph' ? 'note' : view));
+  };
+
+  const openQuickSwitcher = () => setIsQuickSwitcherOpen(true);
+  const closeQuickSwitcher = () => setIsQuickSwitcherOpen(false);
+
   const toggleAI = () => setIsAIOpen((prev) => !prev);
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
@@ -149,32 +212,66 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
     showNotification(`Switched active AI to ${model} (${provider})`);
   };
 
-  const setProviderApiKey = (provider: AIProvider, key: string) => {
-    setApiKeys((prev) => ({ ...prev, [provider]: key }));
-    showNotification(`API Key saved for ${provider}`);
-  };
+  // Keep graph edges in sync with the [[wikilinks]] written in a note.
+  // Only links that were added or removed in this edit are touched, so
+  // connections created elsewhere (seed data, AI expansion) stay intact.
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
 
   const updateNodeContent = (id: string, content: string) => {
+    const current = nodesRef.current;
+    const prevNode = current.find((n) => n.id === id);
+    if (!prevNode) return;
+
+    const resolve = (titles: string[]) =>
+      new Set(
+        titles
+          .map((t) => findNodeByTitle(current, t)?.id)
+          .filter((x): x is string => !!x && x !== id)
+      );
+    const before = resolve(extractWikilinks(prevNode.content));
+    const after = resolve(extractWikilinks(content));
+    const added = [...after].filter((t) => !before.has(t));
+    const removed = [...before].filter((t) => !after.has(t));
+
     setNodes((prev) =>
       prev.map((node) => (node.id === id ? { ...node, content, updatedAt: new Date().toISOString() } : node))
     );
+
+    if (added.length || removed.length) {
+      setEdges((prev) => {
+        let next = prev.filter((e) => !(e.source === id && removed.includes(e.target)));
+        const linked = (t: string) =>
+          next.some((e) => (e.source === id && e.target === t) || (e.source === t && e.target === id));
+        for (const target of added) {
+          if (!linked(target)) {
+            next = [...next, { id: `edge_${Date.now()}_${target}`, source: id, target }];
+          }
+        }
+        return next;
+      });
+    }
   };
 
   const createNote = (title: string, folder = 'Notes') => {
-    const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const base = title.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'untitled';
+    const taken = new Set(nodesRef.current.map((n) => n.id));
+    let slug = base;
+    for (let i = 2; taken.has(slug); i++) slug = `${base}_${i}`;
     const newNode: NoteNode = {
       id: slug,
       label: title,
       folder,
       color: '#9d4edd',
-      content: `# ${title}\n\nStart writing here or ask the AI to expand this thought with [[Wikilinks]]...\n`,
+      content: `# ${title}\n\n`,
       tags: ['new'],
       createdAt: new Date().toISOString(),
     };
     setNodes((prev) => [...prev, newNode]);
     setSelectedNodeId(newNode.id);
-    setActiveView('note');
+    setActiveView((view) => (view === 'split' ? 'split' : 'note'));
     showNotification(`Created note: ${title}`);
+    return newNode.id;
   };
 
   const deleteNote = (id: string) => {
@@ -199,20 +296,19 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
   const openResetVaultModal = () => setIsResetVaultModalOpen(true);
   const closeResetVaultModal = () => setIsResetVaultModalOpen(false);
 
-  const openSettingsModal = () => setIsSettingsModalOpen(true);
-  const closeSettingsModal = () => setIsSettingsModalOpen(false);
 
   const openHelpModal = () => setIsHelpModalOpen(true);
   const closeHelpModal = () => setIsHelpModalOpen(false);
 
   const sendMessageToAI = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isChatLoading) return;
+    setIsAIOpen(true);
 
     const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
       role: 'user',
       content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: timeNow(),
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
@@ -228,12 +324,11 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
           existingNodes: nodes,
           model: activeModel,
           provider: activeProvider,
-          apiKey: apiKeys[activeProvider],
         }),
       });
 
       if (!response.ok) {
-        const errData = await response.json();
+        const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `HTTP ${response.status}`);
       }
 
@@ -243,10 +338,11 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
         id: `asst_${Date.now()}`,
         role: 'assistant',
         content: data.content,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: timeNow(),
         expandedNodes: data.expandedNodes,
         model: activeModel,
         provider: activeProvider,
+        isSimulated: !!data.isSimulated,
       };
 
       setChatMessages((prev) => [...prev, assistantMsg]);
@@ -299,8 +395,9 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
       const errorMsg: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `Error connecting to ${activeModel} (${activeProvider}): ${err.message}. You can configure your API key in \`.env\` or in the top settings gear.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isError: true,
+        content: `**Couldn't reach ${activeModel}.** ${err.message}\n\nCheck that the dev server is running and try again.`,
+        timestamp: timeNow(),
       };
       setChatMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -318,8 +415,8 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
       {
         id: `reset_${Date.now()}`,
         role: 'assistant',
-        content: 'Vault restored to initial default state.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        content: 'Vault restored to its default notes and settings.',
+        timestamp: timeNow(),
       },
     ]);
     showNotification('Restored default vault knowledge graph');
@@ -340,14 +437,17 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
         graphSettings,
         activeProvider,
         activeModel,
-        apiKeys,
         statusNotification,
         isCreateNoteModalOpen,
         noteToDelete,
         isResetVaultModalOpen,
-        isSettingsModalOpen,
         isHelpModalOpen,
+        isQuickSwitcherOpen,
         selectNode,
+        openNote,
+        openQuickSwitcher,
+        closeQuickSwitcher,
+        showNotification,
         setActiveView,
         toggleAI,
         toggleSidebar,
@@ -362,13 +462,10 @@ Whenever I identify new concepts and relationships, I'll **dynamically expand yo
         confirmDeleteNote,
         openResetVaultModal,
         closeResetVaultModal,
-        openSettingsModal,
-        closeSettingsModal,
         openHelpModal,
         closeHelpModal,
         setGraphSettings,
         setActiveModel,
-        setProviderApiKey,
         resetVault,
       }}
     >

@@ -21,7 +21,7 @@ app.get('/api/health', (req: Request, res: Response) => {
       deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
       custom: Boolean(process.env.CUSTOM_AI_API_KEY),
     },
-    defaultModel: process.env.DEFAULT_AI_MODEL || 'claude-3-5-sonnet',
+    defaultModel: process.env.DEFAULT_AI_MODEL || 'claude-sonnet-5-5',
     timestamp: new Date().toISOString(),
   });
 });
@@ -56,7 +56,7 @@ You must end your response with a JSON block in this exact format:
 \`\`\``;
 
 // Helper: Intelligent deterministic fallback when no API key is configured
-function generateFallbackExpansion(prompt: string, activeNode: any, existingNodes: any[], modelName = 'Claude 3.5 Sonnet') {
+function generateFallbackExpansion(prompt: string, activeNode: any, existingNodes: any[], modelName = 'Claude Sonnet 5.5') {
   const lower = prompt.toLowerCase();
   
   if (lower.includes('transformer') || lower.includes('attention') || lower.includes('language') || lower.includes('llm')) {
@@ -161,9 +161,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     messages,
     activeNode,
     existingNodes = [],
-    model = 'claude-3-5-sonnet',
+    model = 'claude-sonnet-5-5',
     provider = 'anthropic',
-    apiKey: clientApiKey,
   } = req.body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -173,7 +172,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   const latestUserMessage = messages[messages.length - 1]?.content || '';
 
   // Determine provider API Key from client or server environment
-  let apiKey = clientApiKey;
+  let apiKey: string | undefined;
   let selectedProvider = provider;
 
   if (model.startsWith('claude')) {
@@ -220,11 +219,9 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         content: m.content,
       }));
 
-      const anthropicModelId = model.includes('3-7')
-        ? 'claude-3-7-sonnet-20250219'
-        : model.includes('haiku')
-        ? 'claude-3-5-haiku-20241022'
-        : 'claude-3-5-sonnet-20241022';
+      const anthropicModelId = typeof model === 'string' && model.startsWith('claude-')
+        ? model
+        : 'claude-sonnet-5-5';
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',

@@ -1,68 +1,46 @@
 import React from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { Sparkles, GitBranch, FileText, CheckCircle2 } from 'lucide-react';
+import { Sparkles, GitBranch, CheckCircle2, HelpCircle } from 'lucide-react';
+import { modelDisplayName } from './AIChatPlugin';
 
 export const VaultStatusBar: React.FC = () => {
-  const {
-    nodes,
-    edges,
-    selectedNode,
-    statusNotification,
-    isAIOpen,
-    toggleAI,
-    activeModel,
-    activeProvider,
-  } = useWorkspace();
+  const { nodes, edges, selectedNode, statusNotification, toggleAI, activeModel, activeView, openHelpModal } =
+    useWorkspace();
 
-  const wordCount = selectedNode
-    ? selectedNode.content.trim().split(/\s+/).filter(Boolean).length
-    : 0;
-
-  const charCount = selectedNode ? selectedNode.content.length : 0;
+  const wordCount = selectedNode ? selectedNode.content.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
-    <footer className="h-6 bg-black border-t border-[#1c1c1c] px-3 flex items-center justify-between text-[11px] text-[#949494] select-none flex-shrink-0 z-40">
-      {/* Left info */}
-      <div className="flex items-center gap-3">
-        <span className="font-semibold text-white">Brain Vault</span>
-        <span className="text-[#333333]">|</span>
-        <div className="flex items-center gap-1.5">
+    <footer className="h-6 bg-black border-t border-[#1c1c1c] px-3 flex items-center justify-between gap-3 text-[11px] text-[#8a8a8a] select-none flex-shrink-0 z-40">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <GitBranch className="w-3 h-3 text-[#9d4edd]" />
-          <span>{nodes.length} notes</span>
-          <span className="text-[#333333]">•</span>
-          <span>{edges.length} connections</span>
+          <span className="tabular-nums">{nodes.length} notes</span>
+          <span className="text-[#3a3a3a]">·</span>
+          <span className="tabular-nums">{edges.length} links</span>
         </div>
 
-        {/* Transient notification */}
-        {statusNotification && (
-          <div className="flex items-center gap-1.5 text-[#00ff88] font-medium ml-2">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>{statusNotification}</span>
-          </div>
-        )}
+        {/* Transient notification (announced to screen readers) */}
+        <div className="min-w-0" role="status" aria-live="polite">
+          {statusNotification && (
+            <div key={statusNotification} className="flex items-center gap-1.5 text-[#4ade80] vault-fade-in min-w-0">
+              <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{statusNotification}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Right info: active note words & AI status */}
-      <div className="flex items-center gap-3">
-        {selectedNode && (
-          <div className="flex items-center gap-1.5 text-[#949494]">
-            <FileText className="w-3 h-3" />
-            <span>{wordCount} words</span>
-            <span className="text-[#333333]">•</span>
-            <span>{charCount} chars</span>
-          </div>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {selectedNode && activeView !== 'graph' && (
+          <span className="hidden sm:inline tabular-nums">{wordCount} words</span>
         )}
-
-        <span className="text-[#333333]">|</span>
-
-        <button
-          onClick={toggleAI}
-          className="flex items-center gap-1 text-[#9d4edd] hover:text-white transition font-medium"
-        >
+        <button onClick={openHelpModal} className="hidden sm:flex items-center gap-1 hover:text-white transition-colors">
+          <HelpCircle className="w-3 h-3" />
+          Shortcuts
+        </button>
+        <button onClick={toggleAI} className="flex items-center gap-1 text-[#b57aed] hover:text-white transition-colors">
           <Sparkles className="w-3 h-3" />
-          <span>
-            {activeModel} ({activeProvider})
-          </span>
+          <span className="truncate max-w-[160px]">{modelDisplayName(activeModel)}</span>
         </button>
       </div>
     </footer>

@@ -1,23 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { AIProvider } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  Sparkles,
-  Send,
-  X,
-  Bot,
-  User,
-  GitBranch,
-  ArrowRight,
-  Key,
-  ChevronDown,
-  Layers,
-  Settings2,
-  Check,
-  Cpu,
-} from 'lucide-react';
+import { Sparkles, ArrowUp, X, GitBranch, ArrowRight, AlertTriangle, ChevronDown } from 'lucide-react';
+import { MOD } from './shortcuts';
 
 interface ProviderOption {
   id: AIProvider;
@@ -26,15 +13,15 @@ interface ProviderOption {
   accentColor: string;
 }
 
-const PROVIDERS: ProviderOption[] = [
+export const PROVIDERS: ProviderOption[] = [
   {
     id: 'anthropic',
     name: 'Anthropic',
     accentColor: '#d97757',
     models: [
-      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet' },
-      { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku' },
+      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
+      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5' },
+      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5' },
     ],
   },
   {
@@ -59,7 +46,7 @@ const PROVIDERS: ProviderOption[] = [
   {
     id: 'deepseek',
     name: 'DeepSeek',
-    accentColor: '#0066ff',
+    accentColor: '#4d6bfe',
     models: [
       { id: 'deepseek-chat', name: 'DeepSeek Chat (V3)' },
       { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner (R1)' },
@@ -67,15 +54,24 @@ const PROVIDERS: ProviderOption[] = [
   },
   {
     id: 'custom',
-    name: 'Custom / Other',
+    name: 'Custom',
     accentColor: '#9d4edd',
-    models: [
-      { id: 'custom-model', name: 'Custom Endpoint' },
-    ],
+    models: [{ id: 'custom-model', name: 'Custom endpoint' }],
   },
 ];
 
-export const AIChatPlugin: React.FC = () => {
+export const modelDisplayName = (modelId: string) =>
+  PROVIDERS.flatMap((p) => p.models).find((m) => m.id === modelId)?.name ?? modelId;
+
+const SUGGESTIONS = [
+  { label: 'Connect AI & Cognitive Science', prompt: 'What are the deepest connections between Artificial Intelligence and Cognitive Science in this vault?' },
+  { label: 'Bridge Philosophy & Systems', prompt: 'Generate 3 novel cross-disciplinary research ideas connecting our Philosophy of Mind and Systems Theory notes.' },
+  { label: 'Propose frontier concepts', prompt: 'Expand our graph: propose 4 new frontier concepts with links to existing notes.' },
+];
+
+const MAX_INPUT_HEIGHT = 160;
+
+export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = false }) => {
   const {
     chatMessages,
     sendMessageToAI,
@@ -88,262 +84,170 @@ export const AIChatPlugin: React.FC = () => {
     activeProvider,
     activeModel,
     setActiveModel,
-    apiKeys,
-    setProviderApiKey,
   } = useWorkspace();
 
   const [input, setInput] = useState('');
-  const [showKeyDialog, setShowKeyDialog] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Stick to the bottom as messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [chatMessages, isChatLoading]);
 
+  // Focus the composer when the panel opens
   useEffect(() => {
-    if (showKeyDialog) {
-      setTempApiKey(apiKeys[activeProvider] || '');
-    }
-  }, [showKeyDialog, activeProvider, apiKeys]);
+    if (isAIOpen) window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50);
+  }, [isAIOpen]);
+
+  // Auto-grow the composer
+  useLayoutEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+  }, [input, isAIOpen]);
 
   if (!isAIOpen) return null;
 
+  const send = (text: string) => {
+    if (!text.trim() || isChatLoading) return;
+    sendMessageToAI(text);
+  };
+
   const handleSend = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+    e?.preventDefault();
     if (!input.trim() || isChatLoading) return;
     const textToSend = input;
     setInput('');
-    sendMessageToAI(textToSend);
+    send(textToSend);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
   };
 
-  const currentProviderConfig =
-    PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
-
-  const handleSaveKey = () => {
-    setProviderApiKey(activeProvider, tempApiKey.trim());
-    setShowKeyDialog(false);
-  };
+  const currentProvider = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
+  const hasUserMessages = chatMessages.some((m) => m.role === 'user');
 
   return (
-    <aside className="w-80 sm:w-96 bg-black border-l border-[#1c1c1c] flex flex-col h-full flex-shrink-0 z-30 select-none text-xs">
-      {/* Plugin Header: Universal AI Branding & Provider Selector */}
-      <div className="p-3 border-b border-[#1c1c1c] bg-black flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <aside
+      className={`w-[min(380px,calc(100vw-44px))] bg-black border-l border-[#1c1c1c] flex flex-col h-full flex-shrink-0 select-none text-xs ${
+        floating ? 'absolute inset-y-0 right-0 z-40 shadow-[-24px_0_60px_-20px_rgba(0,0,0,0.9)] vault-slide-in-right' : 'relative z-30'
+      }`}
+      aria-label="AI assistant"
+    >
+      {/* Header */}
+      <div className="h-12 px-3 border-b border-[#1c1c1c] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-white shadow-sm"
-            style={{ backgroundColor: currentProviderConfig.accentColor }}
+            className="w-6 h-6 rounded-md flex items-center justify-center text-white flex-shrink-0"
+            style={{ backgroundColor: currentProvider.accentColor }}
           >
-            <Sparkles className="w-3.5 h-3.5 fill-white" />
+            <Sparkles className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white text-xs">AI Assistant</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88]" title="Ready" />
-            </div>
-            <div className="text-[10px] text-[#949494] font-mono">
-              Universal Graph Intelligence
-            </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-white text-xs">AI Assistant</div>
+            {/* Model picker: one control instead of separate provider + model selects */}
+            <label className="relative flex items-center gap-1 text-[11px] text-[#a3a3a3] hover:text-white cursor-pointer">
+              <span className="sr-only">Model</span>
+              <select
+                value={`${activeProvider}::${activeModel}`}
+                onChange={(e) => {
+                  const [prov, model] = e.target.value.split('::');
+                  setActiveModel(model, prov as AIProvider);
+                }}
+                className="appearance-none bg-transparent pr-4 outline-none cursor-pointer truncate max-w-[200px]"
+              >
+                {PROVIDERS.map((p) => (
+                  <optgroup key={p.id} label={p.name} className="bg-black">
+                    {p.models.map((m) => (
+                      <option key={m.id} value={`${p.id}::${m.id}`} className="bg-black text-white">
+                        {m.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 absolute right-0 pointer-events-none" />
+            </label>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* API Key Modal Toggle */}
-          <button
-            onClick={() => setShowKeyDialog(true)}
-            className={`p-1.5 rounded transition ${
-              apiKeys[activeProvider]
-                ? 'text-[#00ff88] bg-[#181818]'
-                : 'text-[#949494] hover:text-white hover:bg-[#181818]'
-            }`}
-            title="Configure API Keys for AI Models"
-          >
-            <Key className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Close Sidebar */}
+        <div className="flex items-center gap-0.5">
           <button
             onClick={toggleAI}
-            className="p-1.5 text-[#949494] hover:text-white hover:bg-[#181818] rounded transition"
-            title="Close AI Assistant"
+            className="p-1.5 text-[#8a8a8a] hover:text-white hover:bg-[#181818] rounded transition"
+            title={`Close (${MOD} J)`}
+            aria-label="Close AI assistant"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Model & Provider Selector Strip */}
-      <div className="px-3 py-2 bg-[#080808] border-b border-[#1c1c1c] space-y-1.5">
-        <div className="flex items-center justify-between text-[11px]">
-          {/* Provider Selector */}
-          <div className="flex items-center gap-1">
-            <Cpu className="w-3 h-3 text-[#949494]" />
-            <select
-              value={activeProvider}
-              onChange={(e) => {
-                const newProvider = e.target.value as AIProvider;
-                const found = PROVIDERS.find((p) => p.id === newProvider);
-                if (found && found.models.length > 0) {
-                  setActiveModel(found.models[0].id, newProvider);
-                }
-              }}
-              className="bg-transparent text-white font-medium outline-none cursor-pointer text-xs"
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id} className="bg-black text-white">
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Model Selector */}
-          <select
-            value={activeModel}
-            onChange={(e) => setActiveModel(e.target.value, activeProvider)}
-            className="bg-[#121212] text-[#9d4edd] font-mono px-2 py-0.5 rounded border border-[#1e1e1e] outline-none cursor-pointer text-[11px]"
-          >
-            {currentProviderConfig.models.map((m) => (
-              <option key={m.id} value={m.id} className="bg-black text-white">
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Selected Note Context Pill */}
-        {selectedNode && (
-          <div className="flex items-center justify-between text-[10px] text-[#949494] bg-[#101010] px-2 py-1 rounded border border-[#1c1c1c]">
-            <span className="truncate">
-              Focus: <strong className="text-white">[[{selectedNode.label}]]</strong>
-            </span>
-            <button
-              onClick={() =>
-                sendMessageToAI(
-                  `Analyze [[${selectedNode.label}]] and propose 2 new connecting notes with explanations.`
-                )
-              }
-              className="text-[#9d4edd] hover:text-white transition font-medium flex items-center gap-0.5"
-            >
-              <span>+ Expand</span>
-              <ArrowRight className="w-2.5 h-2.5" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* API Key Modal Popup */}
-      {showKeyDialog && (
-        <div className="p-3 bg-[#0e0e0e] border-b border-[#1c1c1c] space-y-2.5 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-white text-xs flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-[#9d4edd]" />
-              {currentProviderConfig.name} API Key
-            </span>
-            <button
-              onClick={() => setShowKeyDialog(false)}
-              className="text-[#949494] hover:text-white"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <p className="text-[10px] text-[#949494] leading-relaxed">
-            Enter your key or leave blank to use the server environment variable.
-          </p>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="password"
-              placeholder={`Enter ${currentProviderConfig.name} key...`}
-              value={tempApiKey}
-              onChange={(e) => setTempApiKey(e.target.value)}
-              className="flex-1 bg-black text-white border border-[#1e1e1e] rounded px-2.5 py-1 text-xs outline-none focus:border-[#9d4edd]"
-            />
-            <button
-              onClick={handleSaveKey}
-              className="px-3 py-1 bg-[#9d4edd] hover:bg-[#8b3bd6] text-white rounded font-medium text-xs transition"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3.5 select-text">
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-4 select-text" aria-live="polite">
         {chatMessages.map((msg) => {
           const isUser = msg.role === 'user';
+          if (isUser) {
+            return (
+              <div key={msg.id} className="flex justify-end">
+                <div className="max-w-[88%] rounded-2xl rounded-br-md px-3.5 py-2 bg-[#1c1530] border border-[#9d4edd]/25 text-white text-[12.5px] leading-relaxed whitespace-pre-wrap break-words">
+                  {msg.content}
+                </div>
+              </div>
+            );
+          }
           return (
-            <div
-              key={msg.id}
-              className={`flex flex-col space-y-1 ${isUser ? 'items-end' : 'items-start'}`}
-            >
-              {/* Message Header */}
-              <div className="flex items-center gap-1.5 text-[10px] text-[#606060] px-1">
-                {isUser ? (
-                  <>
-                    <span>{msg.timestamp}</span>
-                    <span className="text-[#949494] font-medium">You</span>
-                    <User className="w-3 h-3 text-[#949494]" />
-                  </>
-                ) : (
-                  <>
-                    <Bot className="w-3 h-3 text-[#9d4edd]" />
-                    <span className="text-white font-medium">
-                      {msg.model || activeModel}
-                    </span>
-                    <span>• {msg.timestamp}</span>
-                  </>
+            <div key={msg.id} className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-[10px] text-[#7c7c7c] px-0.5 select-none">
+                <Sparkles className="w-3 h-3 text-[#b57aed]" />
+                <span className="text-[#c4c4c4] font-medium">{modelDisplayName(msg.model || activeModel)}</span>
+                <span>· {msg.timestamp}</span>
+                {msg.isSimulated && (
+                  <span
+                    className="ml-1 rounded border border-[#2a2a2a] px-1 text-[9px] uppercase tracking-wide text-[#8a8a8a]"
+                    title="This answer came from the built-in demo generator"
+                  >
+                    demo
+                  </span>
                 )}
               </div>
-
-              {/* Message Body */}
               <div
-                className={`max-w-[92%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                  isUser
-                    ? 'bg-[#181818] text-white border border-[#222222]'
-                    : 'bg-[#0a0a0a] text-white border border-[#1a1a1a] shadow-sm'
+                className={`rounded-xl px-3.5 py-2.5 text-[12.5px] leading-relaxed break-words ${
+                  msg.isError
+                    ? 'bg-[#1a0d12] border border-[#ff2a85]/30 text-[#f3d5df]'
+                    : 'bg-[#0b0b0b] border border-[#1a1a1a] text-[#e6e6e6]'
                 }`}
               >
-                <div className="prose prose-invert prose-xs max-w-none text-white">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                      ul: ({ children }) => (
-                        <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
-                      ),
-                      code: ({ inline, children }: any) =>
-                        inline ? (
-                          <code className="bg-[#141414] text-[#00f5ff] px-1 py-0.5 rounded font-mono text-[11px] border border-[#1e1e1e]">
-                            {children}
-                          </code>
-                        ) : (
-                          <pre className="bg-black text-white p-2 rounded border border-[#1e1e1e] font-mono text-[11px] my-2 overflow-x-auto">
-                            <code>{children}</code>
-                          </pre>
-                        ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
+                {msg.isError && <AlertTriangle className="w-3.5 h-3.5 text-[#ff5c9d] mb-1" />}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1 marker:text-[#6b6b6b]">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1 marker:text-[#6b6b6b]">{children}</ol>,
+                    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                    code: ({ children }) => (
+                      <code className="bg-[#141414] text-[#7df9ff] px-1 py-0.5 rounded font-mono text-[11px] border border-[#1e1e1e]">
+                        {children}
+                      </code>
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
 
-                {/* If AI dynamically expanded nodes, display interactive pills */}
                 {msg.expandedNodes && msg.expandedNodes.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-[#1e1e1e] space-y-1.5">
-                    <div className="text-[10px] text-[#00ff88] font-semibold flex items-center gap-1">
+                  <div className="mt-2.5 pt-2 border-t border-[#1e1e1e] space-y-1.5 select-none">
+                    <div className="text-[10px] text-[#4ade80] font-medium flex items-center gap-1">
                       <GitBranch className="w-3 h-3" />
-                      <span>Dynamically expanded graph ({msg.expandedNodes.length} nodes):</span>
+                      Added {msg.expandedNodes.length} note{msg.expandedNodes.length === 1 ? '' : 's'} to your graph
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {msg.expandedNodes.map((node) => (
@@ -353,14 +257,12 @@ export const AIChatPlugin: React.FC = () => {
                             selectNode(node.id);
                             setActiveView('graph');
                           }}
-                          className="px-2 py-0.5 rounded-full bg-[#141414] hover:bg-[#1e1e1e] border border-[#252525] hover:border-[#9d4edd] text-[10px] text-white transition flex items-center gap-1 group"
+                          className="px-2 py-0.5 rounded-full bg-[#141414] hover:bg-[#1e1e1e] border border-[#262626] hover:border-[#9d4edd] text-[10px] text-white transition flex items-center gap-1 group"
+                          title="Show in graph"
                         >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: node.color || '#00f5ff' }}
-                          />
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: node.color || '#00f5ff' }} />
                           <span>{node.label}</span>
-                          <ArrowRight className="w-2.5 h-2.5 text-[#606060] group-hover:text-white" />
+                          <ArrowRight className="w-2.5 h-2.5 text-[#6b6b6b] group-hover:text-white" />
                         </button>
                       ))}
                     </div>
@@ -371,75 +273,74 @@ export const AIChatPlugin: React.FC = () => {
           );
         })}
 
-        {/* Loading Indicator */}
         {isChatLoading && (
-          <div className="flex items-center gap-2 text-xs text-[#949494] p-2 bg-[#0a0a0a] rounded-lg border border-[#1c1c1c] w-fit">
-            <Sparkles className="w-3.5 h-3.5 text-[#9d4edd] animate-spin" />
-            <span>Reasoning & expanding graph with {activeModel}...</span>
+          <div className="flex items-center gap-2 text-[11px] text-[#8a8a8a] px-1 select-none" role="status">
+            <span className="flex items-center gap-1" aria-hidden="true">
+              <span className="vault-typing-dot" />
+              <span className="vault-typing-dot" />
+              <span className="vault-typing-dot" />
+            </span>
+            Thinking with {modelDisplayName(activeModel)}…
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        {/* Suggestions sit under the welcome message until the first question */}
+        {!hasUserMessages && !isChatLoading && (
+          <div className="space-y-1.5 select-none">
+            <div className="text-[10px] uppercase tracking-wider text-[#6b6b6b] px-0.5">Suggestions</div>
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => send(s.prompt)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#0b0b0b] hover:bg-[#141414] border border-[#1c1c1c] hover:border-[#2c2c2c] text-left text-[12px] text-[#c4c4c4] hover:text-white transition-colors group"
+              >
+                {s.label}
+                <ArrowRight className="w-3 h-3 text-[#6b6b6b] group-hover:text-[#b57aed] flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Quick Prompts Chips */}
-      <div className="px-3 py-1.5 bg-[#080808] border-t border-[#1c1c1c] flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none">
-        <button
-          onClick={() =>
-            sendMessageToAI(
-              'What are the deepest connections between Artificial Intelligence and Cognitive Science in this vault?'
-            )
-          }
-          className="whitespace-nowrap px-2 py-1 rounded bg-[#101010] hover:bg-[#181818] text-[10px] text-[#949494] hover:text-white transition border border-[#1c1c1c]"
-        >
-          AI & Cognitive Science
-        </button>
-        <button
-          onClick={() =>
-            sendMessageToAI(
-              'Generate 3 novel cross-disciplinary research ideas connecting our Philosophy of Mind and Systems Theory nodes.'
-            )
-          }
-          className="whitespace-nowrap px-2 py-1 rounded bg-[#101010] hover:bg-[#181818] text-[10px] text-[#949494] hover:text-white transition border border-[#1c1c1c]"
-        >
-          Synthesize Philosophy & Systems
-        </button>
-        <button
-          onClick={() =>
-            sendMessageToAI(
-              'Expand our graph: Propose 4 new frontier concepts with edges to existing notes.'
-            )
-          }
-          className="whitespace-nowrap px-2 py-1 rounded bg-[#101010] hover:bg-[#181818] text-[10px] text-[#949494] hover:text-white transition border border-[#1c1c1c]"
-        >
-          + Expand Frontier Concepts
-        </button>
-      </div>
-
-      {/* Input Area */}
-      <form onSubmit={handleSend} className="p-2.5 border-t border-[#1c1c1c] bg-black">
-        <div className="flex items-end gap-1.5 bg-[#0a0a0a] border border-[#1e1e1e] focus-within:border-[#9d4edd] rounded-lg px-2.5 py-1.5 transition">
+      {/* Composer */}
+      <form onSubmit={handleSend} className="p-2.5 border-t border-[#1c1c1c] bg-black space-y-1.5">
+        {selectedNode && (
+          <div className="flex items-center justify-between gap-2 text-[10px] text-[#8a8a8a] px-1">
+            <span className="truncate">
+              Context: <span className="text-[#d4d4d4]">{selectedNode.label}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => send(`Analyze [[${selectedNode.label}]] and propose 2 new connecting notes with explanations.`)}
+              disabled={isChatLoading}
+              className="text-[#b57aed] hover:text-white disabled:opacity-40 transition font-medium flex items-center gap-0.5 whitespace-nowrap"
+            >
+              Expand this note <ArrowRight className="w-2.5 h-2.5" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-end gap-1.5 bg-[#0a0a0a] border border-[#222222] focus-within:border-[#9d4edd]/80 rounded-xl pl-3 pr-1.5 py-1.5 transition-colors">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Ask ${activeModel} to expand your vault graph...`}
-            rows={2}
-            className="w-full bg-transparent text-white placeholder-[#606060] outline-none text-xs resize-none"
+            placeholder={selectedNode ? `Ask about ${selectedNode.label}…` : 'Ask anything about your vault…'}
+            rows={1}
+            className="w-full bg-transparent text-white placeholder-[#6b6b6b] outline-none text-[12.5px] leading-5 resize-none py-1"
+            aria-label="Message the AI assistant"
           />
           <button
             type="submit"
             disabled={!input.trim() || isChatLoading}
-            className="p-1.5 rounded-md bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:opacity-30 disabled:hover:bg-[#9d4edd] text-white transition flex-shrink-0"
+            className="p-1.5 rounded-lg bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:bg-[#262626] disabled:text-[#6b6b6b] text-white transition-colors flex-shrink-0"
             title="Send (Enter)"
+            aria-label="Send message"
           >
-            <Send className="w-3.5 h-3.5" />
+            <ArrowUp className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="mt-1 flex items-center justify-between text-[10px] text-[#505050] px-1">
-          <span>Enter to send, Shift+Enter for newline</span>
-          <span className="font-mono">{activeProvider}</span>
-        </div>
+        <div className="text-[10px] text-[#5f5f5f] px-1">Enter to send · Shift+Enter for a new line</div>
       </form>
     </aside>
   );

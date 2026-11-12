@@ -9,7 +9,7 @@ A high-performance personal knowledge vault and interactive 2D neural graph engi
 ### 1. AMOLED Pure Black Desktop Interface
 - **Pure Black Theme (`#000000`)**: Deep OLED pitch-black contrast paired with solid white text (`#ffffff`) and vibrant neon accents (electric purple, neon cyan, mint, rose, amber).
 - **Desktop Window Titlebar**: macOS traffic light controls, vault switcher, tab management, split-view toggle (graph + note editor side-by-side), and quick vault reset.
-- **Left Activity Ribbon**: Sleek icon strip for switching between graph view, files explorer, note editor, AI assistant, and settings.
+- **Left Activity Ribbon**: Sleek icon strip for switching between graph view, files explorer, note editor, and AI assistant.
 - **Hierarchical File Tree**: Collapsible folders, instant search filtering, note counts, and quick note creation.
 - **Bottom Status Bar**: Live note and link counters, word and character counters, and active AI model indicator.
 
@@ -34,7 +34,7 @@ Replicates desktop graph view properties in great detail using high-DPI HTML5 Ca
   - **Custom / OpenRouter**: Any OpenAI-compatible endpoint
 - **Real-Time Dynamic Graph Expansion**: When chatting with the AI, concepts and relationships proposed by the model are automatically synthesized and injected directly into the live graph as new nodes and connecting wires!
 - **Interactive Concept Pills**: Newly generated concepts appear as interactive buttons in chat that immediately pan to and focus the node in the graph view.
-- **API Key Management**: Configure API keys in `.env` or enter them directly inside the plugin UI per provider.
+- **API Key Management**: Configure provider API keys on the server in `.env`.
 - **Intelligent Fallback Engine**: If no API key is supplied, a built-in semantic concept expander generates rich contextual nodes and relationships so you can explore immediately without friction.
 
 ### 4. Markdown Note Vault & Backlinks
@@ -80,7 +80,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 ```
 
-*(Note: You can also leave them blank and use the built-in intelligent fallback generator, or enter API keys inside the web interface)*
+*(Note: You can also leave them blank and use the built-in intelligent fallback generator)*
 
 ### Run Development Server
 ```bash

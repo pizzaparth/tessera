@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { VaultTitleBar } from '../components/vault/VaultTitleBar';
 import { VaultRibbon } from '../components/vault/VaultRibbon';
@@ -8,58 +8,79 @@ import { VaultNoteEditor } from '../components/vault/VaultNoteEditor';
 import { AIChatPlugin } from '../components/vault/AIChatPlugin';
 import { VaultStatusBar } from '../components/vault/VaultStatusBar';
 import { VaultModals } from '../components/modals/VaultModals';
+import { QuickSwitcher } from '../components/modals/QuickSwitcher';
+import { useWorkspaceShortcuts } from '../components/vault/shortcuts';
+
+/** Below this width the AI panel floats over the workspace instead of squeezing it. */
+const AI_DOCK_MIN_WIDTH = 1280;
+
+const useViewportWidth = () => {
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return width;
+};
 
 export const WorkspacePage: React.FC = () => {
-  const { activeView } = useWorkspace();
+  const { activeView, isAIOpen, toggleAI, isQuickSwitcherOpen } = useWorkspace();
+  useWorkspaceShortcuts();
+
+  const viewportWidth = useViewportWidth();
+  const aiFloating = viewportWidth < AI_DOCK_MIN_WIDTH;
+  // Split view needs room for both panes; fall back to the note on small screens
+  const canSplit = viewportWidth >= 1024;
+  const view = activeView === 'split' && !canSplit ? 'note' : activeView;
 
   return (
-    <div className="fixed inset-0 h-screen w-screen flex flex-col bg-black text-white overflow-hidden font-sans select-none z-30">
-      {/* 1. Top Title Bar */}
+    <div className="vault-root fixed inset-0 h-screen w-screen flex flex-col bg-black text-white overflow-hidden font-sans select-none z-30">
       <VaultTitleBar />
 
-      {/* 2. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Leftmost Activity Ribbon */}
         <VaultRibbon />
-
-        {/* Collapsible File Explorer Sidebar */}
         <VaultFileTree />
 
-        {/* Center Main Canvas: Graph View / Note Editor / Split */}
-        <main className="flex-1 flex overflow-hidden relative bg-black">
-          {activeView === 'graph' && (
+        <main className="flex-1 min-w-0 flex overflow-hidden relative bg-black">
+          {view === 'graph' && (
             <div className="w-full h-full">
               <GraphCanvas />
             </div>
           )}
 
-          {activeView === 'note' && (
+          {view === 'note' && (
             <div className="w-full h-full">
               <VaultNoteEditor />
             </div>
           )}
 
-          {activeView === 'split' && (
+          {view === 'split' && (
             <div className="w-full h-full flex">
-              <div className="w-1/2 h-full border-r border-[#1c1c1c]">
-                <GraphCanvas />
+              <div className="w-1/2 min-w-0 h-full border-r border-[#1c1c1c]">
+                <GraphCanvas compact />
               </div>
-              <div className="w-1/2 h-full">
+              <div className="w-1/2 min-w-0 h-full">
                 <VaultNoteEditor />
               </div>
             </div>
           )}
         </main>
 
-        {/* Rightmost Universal AI Assistant Plugin */}
-        <AIChatPlugin />
+        {/* Dim the workspace behind the floating AI panel; click to dismiss */}
+        {aiFloating && isAIOpen && (
+          <div
+            className="absolute inset-0 z-30 bg-black/50 vault-fade-in"
+            onClick={toggleAI}
+            aria-hidden="true"
+          />
+        )}
+        <AIChatPlugin floating={aiFloating} />
       </div>
 
-      {/* 3. Bottom Status Bar */}
       <VaultStatusBar />
-
-      {/* 4. In-System Dialogs & Modals */}
       <VaultModals />
+      {isQuickSwitcherOpen && <QuickSwitcher />}
     </div>
   );
 };

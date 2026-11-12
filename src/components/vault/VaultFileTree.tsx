@@ -1,35 +1,51 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import {
-  Folder,
-  FolderOpen,
-  FileText,
-  ChevronRight,
-  ChevronDown,
-  Plus,
-  Search,
-  Hash,
-  Trash2,
-  Check,
-  X,
-} from 'lucide-react';
+import { Folder, FolderOpen, FileText, ChevronRight, Plus, Search, Trash2, X } from 'lucide-react';
+
+/** Wrap the matched part of `text` in a highlight. */
+const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) => {
+  const q = query.trim().toLowerCase();
+  const idx = q ? text.toLowerCase().indexOf(q) : -1;
+  if (idx < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-[#9d4edd]/30 text-white rounded-sm">{text.slice(idx, idx + q.length)}</mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+};
 
 export const VaultFileTree: React.FC = () => {
-  const {
-    nodes,
-    selectedNodeId,
-    selectNode,
-    setActiveView,
-    createNote,
-    openDeleteNoteModal,
-    openCreateNoteModal,
-    isSidebarOpen,
-  } = useWorkspace();
+  const { nodes, edges, selectedNodeId, openNote, createNote, openDeleteNoteModal, isSidebarOpen } = useWorkspace();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
   const [isInlineCreating, setIsInlineCreating] = useState(false);
   const [inlineTitle, setInlineTitle] = useState('');
+
+  const linkCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    edges.forEach((e) => {
+      counts[e.source] = (counts[e.source] || 0) + 1;
+      counts[e.target] = (counts[e.target] || 0) + 1;
+    });
+    return counts;
+  }, [edges]);
+
+  const groupedNodes = useMemo(() => {
+    const groups: Record<string, typeof nodes> = {};
+    nodes.forEach((node) => {
+      const folder = node.folder || 'Notes';
+      (groups[folder] ||= []).push(node);
+    });
+    return groups;
+  }, [nodes]);
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredNodes = q
+    ? nodes.filter((n) => n.label.toLowerCase().includes(q) || n.folder.toLowerCase().includes(q))
+    : null;
 
   if (!isSidebarOpen) return null;
 
@@ -41,134 +57,159 @@ export const VaultFileTree: React.FC = () => {
     }
   };
 
-  // Group nodes by folder
-  const groupedNodes: Record<string, typeof nodes> = {};
-  nodes.forEach((node) => {
-    const folder = node.folder || 'General Notes';
-    if (!groupedNodes[folder]) groupedNodes[folder] = [];
-    groupedNodes[folder].push(node);
-  });
+  const toggleFolder = (folderName: string) =>
+    setCollapsedFolders((prev) => ({ ...prev, [folderName]: !prev[folderName] }));
 
-  const toggleFolder = (folderName: string) => {
-    setCollapsedFolders((prev) => ({
-      ...prev,
-      [folderName]: !prev[folderName],
-    }));
+  const renderNoteRow = (node: (typeof nodes)[number]) => {
+    const isSelected = selectedNodeId === node.id;
+    const isOrphan = !linkCounts[node.id];
+    return (
+      <div
+        key={node.id}
+        className={`group relative flex items-center rounded-md transition-colors ${
+          isSelected ? 'bg-[#1a1a1a] text-white' : 'text-[#a3a3a3] hover:text-white hover:bg-[#111111]'
+        }`}
+      >
+        {isSelected && <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-[#9d4edd]" />}
+        <button
+          onClick={() => openNote(node.id)}
+          className="flex-1 min-w-0 flex items-center gap-1.5 py-1 pr-1 pl-2 text-left"
+          aria-current={isSelected ? 'true' : undefined}
+          title={node.label}
+        >
+          <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-[#b57aed]' : 'text-[#6b6b6b]'}`} />
+          <span className={`truncate ${isSelected ? 'font-medium' : ''}`}>
+            <Highlight text={node.label} query={searchQuery} />
+          </span>
+          {isOrphan && (
+            <span className="ml-auto text-[9px] text-[#7c7c7c] group-hover:hidden" title="No links to other notes">
+              unlinked
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => openDeleteNoteModal(node.id, node.label)}
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 mr-0.5 rounded text-[#7c7c7c] hover:text-[#ff5c9d] hover:bg-[#1f1f1f] transition"
+          title={`Delete “${node.label}”`}
+          aria-label={`Delete ${node.label}`}
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    );
   };
 
-  const filteredNodes = searchQuery.trim()
-    ? nodes.filter(
-        (n) =>
-          n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.folder.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : null;
-
   return (
-    <div className="w-56 sm:w-64 bg-black border-r border-[#1c1c1c] flex flex-col h-full flex-shrink-0 select-none text-xs">
-      {/* Sidebar Header & Search */}
+    <aside
+      className="w-60 bg-black border-r border-[#1c1c1c] flex flex-col h-full flex-shrink-0 select-none text-xs absolute left-11 inset-y-0 z-30 shadow-2xl md:static md:shadow-none vault-fade-in"
+      aria-label="Files"
+    >
+      {/* Header & search */}
       <div className="p-2.5 border-b border-[#1c1c1c] space-y-2">
-        <div className="flex items-center justify-between text-[#949494] px-1">
-          <span className="font-semibold text-[11px] uppercase tracking-wider text-white">
-            Files & Folders
-          </span>
+        <div className="flex items-center justify-between px-1">
+          <span className="font-semibold text-[11px] uppercase tracking-wider text-white">Files</span>
           <button
             onClick={() => setIsInlineCreating(true)}
             className="p-1 hover:text-white hover:bg-[#181818] rounded transition text-[#949494]"
-            title="New note"
+            title="New note in “Notes”"
+            aria-label="New note"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Search input */}
-        <div className="flex items-center gap-1.5 bg-[#0a0a0a] border border-[#1e1e1e] rounded px-2 py-1 text-xs">
-          <Search className="w-3.5 h-3.5 text-[#949494]" />
+        <div className="flex items-center gap-1.5 bg-[#0a0a0a] border border-[#1e1e1e] focus-within:border-[#9d4edd]/70 rounded-md px-2 py-1 transition-colors">
+          <Search className="w-3.5 h-3.5 text-[#7c7c7c] flex-shrink-0" />
           <input
             type="text"
-            placeholder="Filter files..."
+            placeholder="Filter notes…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent text-white placeholder-[#606060] outline-none w-full text-xs"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSearchQuery('');
+              if (e.key === 'Enter' && filteredNodes?.length) openNote(filteredNodes[0].id);
+            }}
+            className="bg-transparent text-white placeholder-[#6b6b6b] outline-none w-full text-xs"
+            aria-label="Filter notes"
           />
-        </div>
-      </div>
-
-      {/* File List Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-        {/* In-system Inline New Note Input Field */}
-        {isInlineCreating && (
-          <div className="p-1.5 bg-[#121212] border border-[#9d4edd] rounded-md mb-1.5 flex items-center gap-1.5 animate-in fade-in duration-100">
-            <FileText className="w-3.5 h-3.5 text-[#9d4edd] flex-shrink-0" />
-            <input
-              type="text"
-              autoFocus
-              placeholder="Note title (Enter to save)..."
-              value={inlineTitle}
-              onChange={(e) => setInlineTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleInlineCreate();
-                if (e.key === 'Escape') setIsInlineCreating(false);
-              }}
-              className="w-full bg-transparent text-white text-xs outline-none"
-            />
+          {searchQuery && (
             <button
-              onClick={handleInlineCreate}
-              className="p-0.5 text-[#00ff88] hover:text-white rounded"
-              title="Save (Enter)"
-            >
-              <Check className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => setIsInlineCreating(false)}
-              className="p-0.5 text-[#949494] hover:text-white rounded"
-              title="Cancel (Esc)"
+              onClick={() => setSearchQuery('')}
+              className="p-0.5 rounded text-[#7c7c7c] hover:text-white"
+              aria-label="Clear filter"
             >
               <X className="w-3 h-3" />
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+        {isInlineCreating && (
+          <div className="p-1.5 bg-[#121212] border border-[#9d4edd]/70 rounded-md mb-1.5 vault-fade-in">
+            <div className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#b57aed] flex-shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Note title"
+                value={inlineTitle}
+                onChange={(e) => setInlineTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleInlineCreate();
+                  if (e.key === 'Escape') setIsInlineCreating(false);
+                }}
+                onBlur={() => !inlineTitle.trim() && setIsInlineCreating(false)}
+                className="w-full bg-transparent text-white text-xs outline-none"
+              />
+            </div>
+            <div className="mt-1 pl-5 text-[10px] text-[#7c7c7c]">Enter to create · Esc to cancel</div>
           </div>
         )}
+
         {filteredNodes ? (
-          // Search results view
           <div className="space-y-0.5">
-            <div className="text-[10px] text-[#949494] px-2 py-1">
-              Found {filteredNodes.length} notes
+            <div className="text-[10px] text-[#7c7c7c] px-2 py-1">
+              {filteredNodes.length} {filteredNodes.length === 1 ? 'match' : 'matches'}
             </div>
-            {filteredNodes.map((node) => (
+            {filteredNodes.map((node) => renderNoteRow(node))}
+            {!nodes.some((n) => n.label.toLowerCase() === q) && (
               <button
-                key={node.id}
                 onClick={() => {
-                  selectNode(node.id);
-                  setActiveView('note');
+                  createNote(searchQuery.trim());
+                  setSearchQuery('');
                 }}
-                className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition ${
-                  selectedNodeId === node.id
-                    ? 'bg-[#181818] text-white font-medium shadow-sm'
-                    : 'text-[#949494] hover:text-white hover:bg-[#0f0f0f]'
-                }`}
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-md text-left text-[#b57aed] hover:bg-[#141414] transition"
               >
-                <FileText className="w-3.5 h-3.5 text-[#949494] flex-shrink-0" />
-                <span className="truncate">{node.label}</span>
+                <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">
+                  Create “<span className="text-white">{searchQuery.trim()}</span>”
+                </span>
               </button>
-            ))}
+            )}
+          </div>
+        ) : nodes.length === 0 ? (
+          <div className="px-3 py-8 text-center text-[#7c7c7c]">
+            <p>Your vault is empty.</p>
+            <button onClick={() => setIsInlineCreating(true)} className="mt-2 text-[#b57aed] hover:text-white">
+              Create your first note
+            </button>
           </div>
         ) : (
-          // Hierarchical folder view
           Object.entries(groupedNodes).map(([folderName, folderNodes]) => {
             const isCollapsed = collapsedFolders[folderName];
             return (
               <div key={folderName} className="mb-1">
-                {/* Folder Header */}
                 <button
                   onClick={() => toggleFolder(folderName)}
-                  className="w-full flex items-center justify-between px-1.5 py-1 rounded text-[#949494] hover:text-white hover:bg-[#121212] transition font-medium group text-[11px]"
+                  className="w-full flex items-center justify-between px-1.5 py-1 rounded-md text-[#a3a3a3] hover:text-white hover:bg-[#111111] transition font-medium group text-[11px]"
+                  aria-expanded={!isCollapsed}
                 >
-                  <div className="flex items-center gap-1.5 truncate">
-                    {isCollapsed ? (
-                      <ChevronRight className="w-3 h-3 text-[#606060]" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3 text-[#606060]" />
-                    )}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <ChevronRight
+                      className={`w-3 h-3 text-[#6b6b6b] transition-transform duration-150 ${isCollapsed ? '' : 'rotate-90'}`}
+                    />
                     {isCollapsed ? (
                       <Folder className="w-3.5 h-3.5 text-[#9d4edd]" />
                     ) : (
@@ -176,52 +217,14 @@ export const VaultFileTree: React.FC = () => {
                     )}
                     <span className="truncate">{folderName}</span>
                   </div>
-                  <span className="text-[10px] text-[#606060] group-hover:text-[#949494] font-mono">
+                  <span className="text-[10px] text-[#6b6b6b] group-hover:text-[#949494] tabular-nums">
                     {folderNodes.length}
                   </span>
                 </button>
 
-                {/* Folder Notes */}
                 {!isCollapsed && (
-                  <div className="ml-3 pl-2 border-l border-[#1c1c1c] space-y-0.5 mt-0.5">
-                    {folderNodes.map((node) => {
-                      const isSelected = selectedNodeId === node.id;
-                      return (
-                        <div
-                          key={node.id}
-                          className={`group flex items-center justify-between px-2 py-1 rounded cursor-pointer transition ${
-                            isSelected
-                              ? 'bg-[#181818] text-white font-medium border-l-2 border-[#9d4edd]'
-                              : 'text-[#949494] hover:text-white hover:bg-[#0f0f0f]'
-                          }`}
-                          onClick={() => {
-                            selectNode(node.id);
-                            setActiveView('note');
-                          }}
-                        >
-                          <div className="flex items-center gap-1.5 truncate flex-1">
-                            <FileText
-                              className={`w-3.5 h-3.5 flex-shrink-0 ${
-                                isSelected ? 'text-[#9d4edd]' : 'text-[#606060]'
-                              }`}
-                            />
-                            <span className="truncate">{node.label}</span>
-                          </div>
-
-                          {/* Quick delete note */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteNoteModal(node.id, node.label);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 text-[#606060] hover:text-[#ff2a85] transition"
-                            title="Delete note"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
+                  <div className="ml-3 pl-1.5 border-l border-[#1c1c1c] space-y-px mt-0.5">
+                    {folderNodes.map((node) => renderNoteRow(node))}
                   </div>
                 )}
               </div>
@@ -230,19 +233,14 @@ export const VaultFileTree: React.FC = () => {
         )}
       </div>
 
-      {/* Vault Footer Info */}
-      <div className="p-2 border-t border-[#1c1c1c] text-[10px] text-[#606060] flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <Hash className="w-3 h-3 text-[#9d4edd]" />
-          <span>{nodes.length} total notes</span>
-        </div>
-        <button
-          onClick={() => setIsInlineCreating(true)}
-          className="text-[#949494] hover:text-white transition"
-        >
-          + Note
+      <div className="px-3 py-2 border-t border-[#1c1c1c] text-[10px] text-[#7c7c7c] flex items-center justify-between">
+        <span>
+          {nodes.length} notes · {Object.keys(groupedNodes).length} folders
+        </span>
+        <button onClick={() => setIsInlineCreating(true)} className="text-[#949494] hover:text-white transition">
+          + New note
         </button>
       </div>
-    </div>
+    </aside>
   );
 };

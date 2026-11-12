@@ -1,16 +1,33 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import {
-  Folder,
-  GitBranch,
-  Sparkles,
-  Settings,
-  Plus,
-  BookOpen,
-  HelpCircle,
-  Home,
-} from 'lucide-react';
+import { Folder, GitBranch, Sparkles, Plus, BookOpen, HelpCircle, Search } from 'lucide-react';
+import { MOD } from './shortcuts';
+
+interface RibbonButtonProps {
+  label: string;
+  shortcut?: string;
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const RibbonButton: React.FC<RibbonButtonProps> = ({ label, shortcut, active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`group relative p-2 rounded-lg transition-colors ${
+      active ? 'text-[#b57aed] bg-[#181818]' : 'text-[#8a8a8a] hover:text-white hover:bg-[#141414]'
+    }`}
+    aria-label={label}
+    aria-pressed={active}
+  >
+    {children}
+    {/* Hover tooltip (native title is slow and unstyled) */}
+    <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded-md border border-[#262626] bg-[#111111] px-2 py-1 text-[11px] text-white opacity-0 shadow-xl transition-opacity duration-100 group-hover:opacity-100 group-focus-visible:opacity-100 z-50 flex items-center gap-2">
+      {label}
+      {shortcut && <kbd className="vault-kbd">{shortcut}</kbd>}
+    </span>
+  </button>
+);
 
 export const VaultRibbon: React.FC = () => {
   const {
@@ -21,105 +38,58 @@ export const VaultRibbon: React.FC = () => {
     isSidebarOpen,
     toggleSidebar,
     openCreateNoteModal,
-    openSettingsModal,
     openHelpModal,
+    openQuickSwitcher,
   } = useWorkspace();
 
   return (
-    <div className="w-10 sm:w-11 bg-black border-r border-[#1c1c1c] flex flex-col items-center justify-between py-2 flex-shrink-0 z-30 select-none">
-      {/* Top action icons */}
-      <div className="flex flex-col items-center gap-1.5">
-        {/* Toggle Vault File Tree */}
-        <button
+    <nav
+      className="w-11 bg-black border-r border-[#1c1c1c] flex flex-col items-center justify-between py-2 flex-shrink-0 z-40 select-none"
+      aria-label="Workspace"
+    >
+      <div className="flex flex-col items-center gap-1">
+        <RibbonButton
+          label={isSidebarOpen ? 'Hide files' : 'Show files'}
+          shortcut={`${MOD} B`}
+          active={isSidebarOpen}
           onClick={toggleSidebar}
-          className={`p-2 rounded-lg transition ${
-            isSidebarOpen
-              ? 'text-white bg-[#181818]'
-              : 'text-[#949494] hover:text-white hover:bg-[#121212]'
-          }`}
-          title={isSidebarOpen ? 'Collapse Files sidebar' : 'Expand Files sidebar'}
         >
           <Folder className="w-4 h-4" />
-        </button>
-
-        {/* Graph View */}
-        <button
-          onClick={() => setActiveView('graph')}
-          className={`p-2 rounded-lg transition ${
-            activeView === 'graph'
-              ? 'text-[#9d4edd] bg-[#181818]'
-              : 'text-[#949494] hover:text-white hover:bg-[#121212]'
-          }`}
-          title="Open Graph View"
-        >
-          <GitBranch className="w-4 h-4" />
-        </button>
-
-        {/* Note Editor View */}
-        <button
-          onClick={() => setActiveView('note')}
-          className={`p-2 rounded-lg transition ${
-            activeView === 'note'
-              ? 'text-[#9d4edd] bg-[#181818]'
-              : 'text-[#949494] hover:text-white hover:bg-[#121212]'
-          }`}
-          title="Open Note Editor"
-        >
-          <BookOpen className="w-4 h-4" />
-        </button>
-
-        {/* Quick New Note */}
-        <button
-          onClick={openCreateNoteModal}
-          className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
-          title="Create new note"
-        >
+        </RibbonButton>
+        <RibbonButton label="Search notes" shortcut={`${MOD} K`} onClick={openQuickSwitcher}>
+          <Search className="w-4 h-4" />
+        </RibbonButton>
+        <RibbonButton label="New note" shortcut={`${MOD} Shift N`} onClick={openCreateNoteModal}>
           <Plus className="w-4 h-4" />
-        </button>
+        </RibbonButton>
 
         <div className="w-5 h-px bg-[#1c1c1c] my-1" />
 
-        {/* AI Assistant Icon */}
-        <button
-          onClick={toggleAI}
-          className={`p-2 rounded-lg transition relative ${
-            isAIOpen
-              ? 'text-[#9d4edd] bg-[#181818] shadow-[0_0_10px_rgba(157,78,221,0.3)]'
-              : 'text-[#949494] hover:text-[#9d4edd] hover:bg-[#121212]'
-          }`}
-          title="Toggle AI Knowledge Assistant"
+        <RibbonButton
+          label="Graph view"
+          shortcut={`${MOD} G`}
+          active={activeView === 'graph' || activeView === 'split'}
+          onClick={() => setActiveView('graph')}
         >
+          <GitBranch className="w-4 h-4" />
+        </RibbonButton>
+        <RibbonButton
+          label="Note editor"
+          active={activeView === 'note' || activeView === 'split'}
+          onClick={() => setActiveView('note')}
+        >
+          <BookOpen className="w-4 h-4" />
+        </RibbonButton>
+        <RibbonButton label="AI assistant" shortcut={`${MOD} J`} active={isAIOpen} onClick={toggleAI}>
           <Sparkles className="w-4 h-4" />
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00ff88]" />
-        </button>
+        </RibbonButton>
       </div>
 
-      {/* Bottom Settings Icon */}
-      <div className="flex flex-col items-center gap-1.5">
-        <Link
-          to="/"
-          className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
-          title="Return to Website"
-        >
-          <Home className="w-4 h-4" />
-        </Link>
-
-        <button
-          onClick={openHelpModal}
-          className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
-          title="Vault Information & Shortcuts"
-        >
+      <div className="flex flex-col items-center gap-1">
+        <RibbonButton label="Guide & shortcuts" shortcut="?" onClick={openHelpModal}>
           <HelpCircle className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={openSettingsModal}
-          className="p-2 text-[#949494] hover:text-white hover:bg-[#181818] rounded-lg transition"
-          title="Settings & API Keys"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        </RibbonButton>
       </div>
-    </div>
+    </nav>
   );
 };

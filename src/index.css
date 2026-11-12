@@ -1,9 +1,11 @@
-@import "./rootly.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: #ffffff;
     color: #100f12;
@@ -11,13 +13,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 }
 
 /* AMOLED sleek minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -25,12 +28,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  background: rgba(109, 85, 189, 0.25);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(109, 85, 189, 0.55);
 }
 
 /* AMOLED Graph Canvas */
@@ -53,4 +56,259 @@
 .internal-link:hover {
   color: #c084fc;
   text-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+}
+
+/* Continuous Animation Utilities */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes radar-ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+@keyframes laser-sweep {
+  0% {
+    left: 0%;
+  }
+  50% {
+    left: calc(100% - 2px);
+  }
+  100% {
+    left: 0%;
+  }
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-0.5deg);
+  }
+}
+
+@keyframes beam-shine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(300%) rotate(45deg);
+  }
+}
+
+@keyframes dash-stream {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-left 32s linear infinite;
+}
+
+.animate-marquee-left:hover {
+  animation-play-state: paused;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-right 32s linear infinite;
+}
+
+.animate-marquee-right:hover {
+  animation-play-state: paused;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+.animate-radar-ripple {
+  animation: radar-ripple 2.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.animate-laser-sweep {
+  animation: laser-sweep 4s ease-in-out infinite;
+}
+
+.animate-float-subtle {
+  animation: float-subtle 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
+}
+
+.animate-beam-shine {
+  animation: beam-shine 3.5s ease-in-out infinite;
+}
+
+.animate-dash-stream {
+  animation: dash-stream 4s linear infinite;
+}
+
+/* Glassmorphism & Borders */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(234, 236, 240, 0.8);
+}
+
+.glass-panel-dark {
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ---------------- Brain Vault workspace ---------------- */
+
+.vault-root {
+  color-scheme: dark;
+}
+
+/* Visible keyboard focus for controls (inputs use their own border focus) */
+.vault-root :is(button, a, select, [role='option'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid rgba(181, 122, 237, 0.9);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+.vault-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid #2c2c2c;
+  border-bottom-width: 2px;
+  background: #121212;
+  color: #a8a8a8;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@keyframes vault-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vault-pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes vault-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes vault-typing {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+
+.vault-fade-in { animation: vault-fade-in 140ms ease-out; }
+.vault-pop-in { animation: vault-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vault-slide-in-right { animation: vault-slide-in-right 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.vault-typing-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: #b57aed;
+  animation: vault-typing 1.2s ease-in-out infinite;
+}
+.vault-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.vault-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Wikilink pointing at a note that does not exist yet */
+.internal-link.is-unresolved {
+  color: #8a8a8a;
+  text-decoration-style: dashed;
+}
+.internal-link.is-unresolved:hover {
+  color: #c084fc;
+  text-shadow: none;
+}
+
+.vault-tag {
+  display: inline-block;
+  padding: 0 6px;
+  margin: 0 1px;
+  border-radius: 9999px;
+  background: rgba(157, 78, 221, 0.12);
+  border: 1px solid rgba(157, 78, 221, 0.25);
+  color: #c9a4f2;
+  font-size: 0.85em;
+  line-height: 1.6;
+  text-decoration: none;
+}
+
+/* Horizontal chip rows that can scroll without a visible scrollbar */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-fade-in, .vault-pop-in, .vault-slide-in-right, .vault-typing-dot { animation: none; }
 }

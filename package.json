@@ -34,6 +34,7 @@
     "tailwind-merge": "^3.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/cors": "^2.8.17",
     "@types/cytoscape": "^3.21.9",

@@ -56,6 +56,9 @@ export interface ChatMessage {
   timestamp: string;
   model?: string;
   provider?: AIProvider;
+  /** True when the server answered with its built-in demo generator */
+  isSimulated?: boolean;
+  isError?: boolean;
   expandedNodes?: {
     id: string;
     label: string;

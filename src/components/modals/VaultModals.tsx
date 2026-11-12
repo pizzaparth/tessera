@@ -1,19 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { AIProvider } from '../../types';
-import {
-  X,
-  FileText,
-  Trash2,
-  RotateCcw,
-  Settings,
-  HelpCircle,
-  Key,
-  Folder,
-  Check,
-  Cpu,
-  Sparkles,
-} from 'lucide-react';
+import { X, FileText, Trash2, RotateCcw, HelpCircle } from 'lucide-react';
+import { ModalShell } from './ModalShell';
+import { SHORTCUTS } from '../vault/shortcuts';
+
+const NEW_FOLDER = '__new_folder__';
+
+const inputClass =
+  'w-full bg-[#121212] text-white border border-[#262626] focus:border-[#9d4edd] rounded-lg px-3 py-2 text-xs outline-none transition-colors placeholder-[#5f5f5f]';
+const secondaryBtn =
+  'px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#a3a3a3] hover:text-white hover:bg-[#181818] transition-colors';
+const primaryBtn =
+  'px-4 py-1.5 rounded-lg text-xs font-medium bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors';
+
+const ModalHeader: React.FC<{ id: string; icon: React.ReactNode; title: string; subtitle?: string; onClose: () => void }> = ({
+  id,
+  icon,
+  title,
+  subtitle,
+  onClose,
+}) => (
+  <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-[#1c1c1c]">
+    <div className="flex items-center gap-2.5">
+      {icon}
+      <div>
+        <h3 id={id} className="font-semibold text-sm text-white">
+          {title}
+        </h3>
+        {subtitle && <p className="text-[11px] text-[#8a8a8a] mt-0.5">{subtitle}</p>}
+      </div>
+    </div>
+    <button
+      data-modal-close
+      onClick={onClose}
+      className="text-[#8a8a8a] hover:text-white p-1 -m-1 rounded transition"
+      aria-label="Close"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  </div>
+);
+
 
 export const VaultModals: React.FC = () => {
   const {
@@ -27,200 +54,175 @@ export const VaultModals: React.FC = () => {
     isResetVaultModalOpen,
     closeResetVaultModal,
     resetVault,
-    isSettingsModalOpen,
-    closeSettingsModal,
     isHelpModalOpen,
     closeHelpModal,
-    activeProvider,
-    activeModel,
-    setActiveModel,
-    apiKeys,
-    setProviderApiKey,
+    selectedNode,
+    edges,
   } = useWorkspace();
 
-  // Local state for Create Note Modal
+  // Create note
   const [newTitle, setNewTitle] = useState('');
-  const [newFolder, setNewFolder] = useState('Notes');
+  const [folderChoice, setFolderChoice] = useState('Notes');
+  const [customFolder, setCustomFolder] = useState('');
 
-  // Local state for Settings Modal
-  const [tempKeys, setTempKeys] = useState<Record<string, string>>({});
+
+  const uniqueFolders = Array.from(new Set(nodes.map((n) => n.folder || 'Notes')));
 
   useEffect(() => {
     if (isCreateNoteModalOpen) {
       setNewTitle('');
-      setNewFolder('Notes');
+      setCustomFolder('');
+      // Default to the folder of the note being viewed
+      setFolderChoice(selectedNode?.folder || uniqueFolders[0] || 'Notes');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateNoteModalOpen]);
 
-  useEffect(() => {
-    if (isSettingsModalOpen) {
-      setTempKeys({ ...apiKeys });
-    }
-  }, [isSettingsModalOpen, apiKeys]);
-
-  const uniqueFolders = Array.from(new Set(nodes.map((n) => n.folder || 'Notes')));
+  const resolvedFolder = folderChoice === NEW_FOLDER ? customFolder.trim() : folderChoice;
+  const titleTaken = nodes.some((n) => n.label.toLowerCase() === newTitle.trim().toLowerCase());
+  const canCreate = !!newTitle.trim() && !!resolvedFolder;
 
   const handleCreateNoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-    createNote(newTitle.trim(), newFolder.trim() || 'Notes');
+    if (!canCreate) return;
+    createNote(newTitle.trim(), resolvedFolder);
     closeCreateNoteModal();
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    Object.entries(tempKeys).forEach(([prov, key]) => {
-      setProviderApiKey(prov as AIProvider, key);
-    });
-    closeSettingsModal();
-  };
+  const deleteLinkCount = noteToDelete
+    ? edges.filter((e) => e.source === noteToDelete.id || e.target === noteToDelete.id).length
+    : 0;
 
   return (
     <>
-      {/* 1. In-System Create Note Modal */}
+      {/* Create note */}
       {isCreateNoteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none">
-          <div className="w-full max-w-md bg-[#0a0a0a] border border-[#222222] rounded-2xl p-6 shadow-2xl text-white space-y-4">
-            <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#9d4edd]" />
-                <h3 className="font-semibold text-sm text-white">Create New Note</h3>
-              </div>
-              <button
-                onClick={closeCreateNoteModal}
-                className="text-[#949494] hover:text-white p-1 rounded transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <ModalShell onClose={closeCreateNoteModal} labelledBy="create-note-title">
+          <ModalHeader
+            id="create-note-title"
+            icon={<FileText className="w-4 h-4 text-[#b57aed]" />}
+            title="New note"
+            onClose={closeCreateNoteModal}
+          />
+          <form onSubmit={handleCreateNoteSubmit} className="px-6 py-5 space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="new-note-title" className="text-xs text-[#a3a3a3] font-medium">
+                Title
+              </label>
+              <input
+                id="new-note-title"
+                type="text"
+                autoFocus
+                placeholder="e.g. Transformer Attention"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className={inputClass}
+              />
+              {titleTaken && (
+                <p className="text-[11px] text-[#ffb703]">A note with this title exists. A copy will be created.</p>
+              )}
             </div>
 
-            <form onSubmit={handleCreateNoteSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs text-[#949494] font-medium">Note Title</label>
+            <div className="space-y-1.5">
+              <label htmlFor="new-note-folder" className="text-xs text-[#a3a3a3] font-medium">
+                Folder
+              </label>
+              <select
+                id="new-note-folder"
+                value={folderChoice}
+                onChange={(e) => setFolderChoice(e.target.value)}
+                className={`${inputClass} cursor-pointer`}
+              >
+                {uniqueFolders.map((f) => (
+                  <option key={f} value={f} className="bg-black text-white">
+                    {f}
+                  </option>
+                ))}
+                {!uniqueFolders.includes('Notes') && (
+                  <option value="Notes" className="bg-black text-white">
+                    Notes
+                  </option>
+                )}
+                <option value={NEW_FOLDER} className="bg-black text-white">
+                  + New folder…
+                </option>
+              </select>
+              {folderChoice === NEW_FOLDER && (
                 <input
                   type="text"
                   autoFocus
-                  placeholder="e.g. Cognitive Architecture, Transformer Attention..."
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-[#121212] text-white border border-[#222222] focus:border-[#9d4edd] rounded-lg px-3 py-2 text-xs outline-none transition"
+                  placeholder="Folder name"
+                  value={customFolder}
+                  onChange={(e) => setCustomFolder(e.target.value)}
+                  className={inputClass}
+                  aria-label="New folder name"
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs text-[#949494] font-medium">Vault Folder</label>
-                <div className="flex gap-2">
-                  <select
-                    value={newFolder}
-                    onChange={(e) => setNewFolder(e.target.value)}
-                    className="bg-[#121212] text-white border border-[#222222] rounded-lg px-3 py-2 text-xs outline-none cursor-pointer flex-1"
-                  >
-                    {uniqueFolders.map((f) => (
-                      <option key={f} value={f} className="bg-black text-white">
-                        {f}
-                      </option>
-                    ))}
-                    <option value="New Folder..." className="bg-black text-white">
-                      + Custom Folder...
-                    </option>
-                  </select>
-                </div>
-                {newFolder === 'New Folder...' && (
-                  <input
-                    type="text"
-                    placeholder="Enter custom folder name..."
-                    onChange={(e) => setNewFolder(e.target.value)}
-                    className="w-full bg-[#121212] text-white border border-[#222222] rounded-lg px-3 py-1.5 text-xs outline-none mt-2"
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1c1c1c]">
-                <button
-                  type="button"
-                  onClick={closeCreateNoteModal}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newTitle.trim()}
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:opacity-40 text-white transition shadow-sm"
-                >
-                  Create Note
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. In-System Delete Note Confirmation Modal */}
-      {noteToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none">
-          <div className="w-full max-w-sm bg-[#0a0a0a] border border-[#222222] rounded-2xl p-6 shadow-2xl text-white space-y-4">
-            <div className="flex items-center gap-2.5 text-[#ff2a85]">
-              <div className="p-2 rounded-xl bg-[#ff2a85]/10 border border-[#ff2a85]/20">
-                <Trash2 className="w-5 h-5 text-[#ff2a85]" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm text-white">Delete Note</h3>
-                <p className="text-[11px] text-[#949494]">This action cannot be undone.</p>
-              </div>
+              )}
             </div>
 
-            <p className="text-xs text-[#d0d0d0] leading-relaxed">
-              Are you sure you want to delete note{' '}
-              <strong className="text-white font-mono">[[{noteToDelete.label}]]</strong>? All
-              associated connections in the graph view will be unlinked.
-            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button type="button" onClick={closeCreateNoteModal} className={secondaryBtn}>
+                Cancel
+              </button>
+              <button type="submit" disabled={!canCreate} className={primaryBtn}>
+                Create note
+              </button>
+            </div>
+          </form>
+        </ModalShell>
+      )}
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1c1c1c]">
-              <button
-                type="button"
-                onClick={closeDeleteNoteModal}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition"
-              >
+      {/* Delete note */}
+      {noteToDelete && (
+        <ModalShell onClose={closeDeleteNoteModal} widthClass="max-w-sm" labelledBy="delete-note-title">
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-[#ff2a85]/10 border border-[#ff2a85]/20">
+                <Trash2 className="w-5 h-5 text-[#ff5c9d]" />
+              </div>
+              <h3 id="delete-note-title" className="font-semibold text-sm text-white">
+                Delete “{noteToDelete.label}”?
+              </h3>
+            </div>
+            <p className="text-xs text-[#c4c4c4] leading-relaxed">
+              The note
+              {deleteLinkCount > 0 && ` and its ${deleteLinkCount} connection${deleteLinkCount === 1 ? '' : 's'}`} will be
+              removed from the vault. This can't be undone.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button type="button" onClick={closeDeleteNoteModal} className={secondaryBtn}>
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteNote}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#ff2a85] hover:bg-[#e02475] text-white transition shadow-sm"
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#e0246f] hover:bg-[#c81e62] text-white transition-colors"
               >
-                Delete Note
+                Delete note
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
-      {/* 3. In-System Reset Vault Confirmation Modal */}
+      {/* Reset vault */}
       {isResetVaultModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none">
-          <div className="w-full max-w-sm bg-[#0a0a0a] border border-[#222222] rounded-2xl p-6 shadow-2xl text-white space-y-4">
-            <div className="flex items-center gap-2.5 text-[#ffb703]">
+        <ModalShell onClose={closeResetVaultModal} widthClass="max-w-sm" labelledBy="reset-vault-title">
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-[#ffb703]/10 border border-[#ffb703]/20">
                 <RotateCcw className="w-5 h-5 text-[#ffb703]" />
               </div>
-              <div>
-                <h3 className="font-semibold text-sm text-white">Reset Brain Vault</h3>
-                <p className="text-[11px] text-[#949494]">Restore default knowledge graph</p>
-              </div>
+              <h3 id="reset-vault-title" className="font-semibold text-sm text-white">
+                Reset the vault?
+              </h3>
             </div>
-
-            <p className="text-xs text-[#d0d0d0] leading-relaxed">
-              Are you sure you want to reset the vault? This restores the default foundational
-              notes, interlinked Wikilinks, and resets graph physics settings.
+            <p className="text-xs text-[#c4c4c4] leading-relaxed">
+              This replaces your {nodes.length} notes with the original sample notes, resets graph settings and clears
+              the chat. Notes you created or edited will be lost.
             </p>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1c1c1c]">
-              <button
-                type="button"
-                onClick={closeResetVaultModal}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition"
-              >
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button type="button" onClick={closeResetVaultModal} className={secondaryBtn}>
                 Cancel
               </button>
               <button
@@ -229,204 +231,76 @@ export const VaultModals: React.FC = () => {
                   resetVault();
                   closeResetVaultModal();
                 }}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#9d4edd] hover:bg-[#8b3bd6] text-white transition shadow-sm"
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#ffb703] hover:bg-[#e6a502] text-black transition-colors"
               >
-                Reset Vault
+                Reset vault
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
-      {/* 4. In-System Settings & API Key Modal */}
-      {isSettingsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none">
-          <div className="w-full max-w-md bg-[#0a0a0a] border border-[#222222] rounded-2xl p-6 shadow-2xl text-white space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3">
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-[#9d4edd]" />
-                <h3 className="font-semibold text-sm text-white">Vault Settings & API Keys</h3>
-              </div>
-              <button
-                onClick={closeSettingsModal}
-                className="text-[#949494] hover:text-white p-1 rounded transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              <div className="space-y-3">
-                <div className="text-[11px] font-semibold text-[#949494] uppercase tracking-wider">
-                  Frontier AI Model Credentials
-                </div>
-
-                {/* Anthropic Key */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-white flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3 text-[#d97757]" />
-                      Anthropic API Key (Claude)
-                    </span>
-                    <span className="text-[10px] text-[#606060]">sk-ant-...</span>
-                  </div>
-                  <input
-                    type="password"
-                    placeholder="Enter Anthropic API Key or leave empty for .env"
-                    value={tempKeys['anthropic'] || ''}
-                    onChange={(e) => setTempKeys({ ...tempKeys, anthropic: e.target.value })}
-                    className="w-full bg-[#121212] text-white border border-[#222222] focus:border-[#9d4edd] rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
-                  />
-                </div>
-
-                {/* OpenAI Key */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-white flex items-center gap-1.5">
-                      <Cpu className="w-3 h-3 text-[#10a37f]" />
-                      OpenAI API Key (GPT-4o / o1)
-                    </span>
-                    <span className="text-[10px] text-[#606060]">sk-...</span>
-                  </div>
-                  <input
-                    type="password"
-                    placeholder="Enter OpenAI API Key or leave empty for .env"
-                    value={tempKeys['openai'] || ''}
-                    onChange={(e) => setTempKeys({ ...tempKeys, openai: e.target.value })}
-                    className="w-full bg-[#121212] text-white border border-[#222222] focus:border-[#9d4edd] rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
-                  />
-                </div>
-
-                {/* Google Gemini Key */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-white flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3 text-[#4285f4]" />
-                      Google Gemini API Key
-                    </span>
-                    <span className="text-[10px] text-[#606060]">AIza...</span>
-                  </div>
-                  <input
-                    type="password"
-                    placeholder="Enter Google Gemini Key or leave empty for .env"
-                    value={tempKeys['gemini'] || ''}
-                    onChange={(e) => setTempKeys({ ...tempKeys, gemini: e.target.value })}
-                    className="w-full bg-[#121212] text-white border border-[#222222] focus:border-[#9d4edd] rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
-                  />
-                </div>
-
-                {/* DeepSeek Key */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-white flex items-center gap-1.5">
-                      <Cpu className="w-3 h-3 text-[#0066ff]" />
-                      DeepSeek API Key (V3 / R1)
-                    </span>
-                    <span className="text-[10px] text-[#606060]">sk-...</span>
-                  </div>
-                  <input
-                    type="password"
-                    placeholder="Enter DeepSeek Key or leave empty for .env"
-                    value={tempKeys['deepseek'] || ''}
-                    onChange={(e) => setTempKeys({ ...tempKeys, deepseek: e.target.value })}
-                    className="w-full bg-[#121212] text-white border border-[#222222] focus:border-[#9d4edd] rounded-lg px-3 py-1.5 text-xs outline-none font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#121212] rounded-xl border border-[#1e1e1e] text-[11px] text-[#949494] space-y-1">
-                <div className="text-white font-medium">In-System Credential Fallback</div>
-                <p>
-                  Keys entered here override your local <code className="text-[#9d4edd]">.env</code> file.
-                  If no key is entered, the built-in intelligent semantic generator powers live graph expansions.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1c1c1c]">
-                <button
-                  type="button"
-                  onClick={closeSettingsModal}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#9d4edd] hover:bg-[#8b3bd6] text-white transition shadow-sm"
-                >
-                  Save Credentials
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 5. In-System Help & Guide Modal */}
+      {/* Help */}
       {isHelpModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 select-none">
-          <div className="w-full max-w-lg bg-[#0a0a0a] border border-[#222222] rounded-2xl p-6 shadow-2xl text-white space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#1c1c1c] pb-3">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-[#9d4edd]" />
-                <h3 className="font-semibold text-sm text-white">Brain Vault • Guide & Shortcuts</h3>
+        <ModalShell onClose={closeHelpModal} widthClass="max-w-lg" labelledBy="help-title" className="max-h-[85vh] flex flex-col">
+          <ModalHeader
+            id="help-title"
+            icon={<HelpCircle className="w-4 h-4 text-[#b57aed]" />}
+            title="Guide & shortcuts"
+            onClose={closeHelpModal}
+          />
+          <div className="px-6 py-5 space-y-5 text-xs text-[#c4c4c4] overflow-y-auto">
+            <section className="space-y-2">
+              <h4 className="font-semibold text-white">Keyboard</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                {SHORTCUTS.map((s) => (
+                  <div key={s.label} className="flex items-center justify-between gap-3">
+                    <span className="text-[#a3a3a3]">{s.label}</span>
+                    <kbd className="vault-kbd">{s.keys}</kbd>
+                  </div>
+                ))}
               </div>
-              <button
-                onClick={closeHelpModal}
-                className="text-[#949494] hover:text-white p-1 rounded transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            </section>
 
-            <div className="space-y-4 text-xs text-[#d0d0d0]">
-              <div className="space-y-1.5">
-                <h4 className="font-semibold text-white text-xs">2D Canvas Graph View</h4>
-                <ul className="list-disc pl-4 space-y-1 text-[#a0a0a0]">
-                  <li>
-                    <strong className="text-white">Mouse Wheel:</strong> Smooth cursor-centered zoom in / zoom out.
-                  </li>
-                  <li>
-                    <strong className="text-white">Click & Drag Background:</strong> Pan across the infinite canvas.
-                  </li>
-                  <li>
-                    <strong className="text-white">Click Any Node:</strong> Inspects note in reading view and illuminates its immediate 1-hop neighborhood.
-                  </li>
-                  <li>
-                    <strong className="text-white">Drag Node:</strong> Repositions node with live Hooke’s Law physics relaxation.
-                  </li>
-                  <li>
-                    <strong className="text-white">Gear Icon (Top Right):</strong> Adjust Forces (repulsion, gravity), Display (wire thickness, node size), Color Groups, and Filters.
-                  </li>
-                </ul>
-              </div>
+            <section className="space-y-1.5">
+              <h4 className="font-semibold text-white">Graph</h4>
+              <ul className="list-disc pl-4 space-y-1 text-[#a3a3a3] marker:text-[#5f5f5f]">
+                <li>Click a node to select it and highlight its connections. Double-click to open the note.</li>
+                <li>Scroll to zoom, drag the background to pan, drag a node to move it.</li>
+                <li>Use the zoom buttons (bottom right) to fit the whole graph in view.</li>
+                <li>The sliders icon (top right) holds forces, display, color groups and filters.</li>
+              </ul>
+            </section>
 
-              <div className="space-y-1.5">
-                <h4 className="font-semibold text-white text-xs">Wikilinks & Note Connections</h4>
-                <p className="text-[#a0a0a0] leading-relaxed">
-                  Type <code className="text-[#9d4edd] bg-[#121212] px-1.5 py-0.5 rounded">[[Note Title]]</code> anywhere inside a note to create an instant bidirectional connection. In preview mode, wikilinks are clickable and immediately navigate across notes.
-                </p>
-              </div>
+            <section className="space-y-1.5">
+              <h4 className="font-semibold text-white">Linking notes</h4>
+              <p className="text-[#a3a3a3] leading-relaxed">
+                Type <code className="text-[#b57aed] bg-[#121212] px-1.5 py-0.5 rounded">[[Note Title]]</code> in a note
+                to link it. The connection appears in the graph as you type. Links to notes that don't exist yet are
+                shown dashed; click one to create that note.
+              </p>
+            </section>
 
-              <div className="space-y-1.5">
-                <h4 className="font-semibold text-white text-xs">Multi-Model AI Knowledge Expansion</h4>
-                <p className="text-[#a0a0a0] leading-relaxed">
-                  Chat with frontier models (Claude, GPT-4o, Gemini, DeepSeek). As you reason, the assistant analyzes the discourse and dynamically grows your graph by injecting new concepts and unlabeled connecting wires in real time.
-                </p>
-              </div>
-            </div>
+            <section className="space-y-1.5">
+              <h4 className="font-semibold text-white">AI assistant</h4>
+              <p className="text-[#a3a3a3] leading-relaxed">
+                Ask questions about your notes or use “Expand with AI”. New concepts the assistant proposes are added to
+                the graph automatically under <em>AI Discoveries</em>.
+              </p>
+            </section>
 
-            <div className="flex items-center justify-end pt-3 border-t border-[#1c1c1c]">
-              <button
-                type="button"
-                onClick={closeHelpModal}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#181818] hover:bg-[#222222] text-white transition"
-              >
-                Got it
-              </button>
-            </div>
+            <p className="text-[11px] text-[#7c7c7c]">Your vault is saved in this browser. Use Reset (top bar) to restore the samples.</p>
           </div>
-        </div>
+          <div className="flex items-center justify-end px-6 py-3 border-t border-[#1c1c1c]">
+            <button
+              type="button"
+              onClick={closeHelpModal}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#181818] hover:bg-[#222222] text-white transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </ModalShell>
       )}
     </>
   );
