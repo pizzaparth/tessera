@@ -1,6 +1,6 @@
 # TESSERA
 
-### A Quantitative Research Knowledge System
+### Turn conversations into connected knowledge
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61dafb.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -9,201 +9,90 @@
 [![Cytoscape.js](https://img.shields.io/badge/Cytoscape.js-3.30-orange.svg?style=flat-square)](https://js.cytoscape.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=flat-square)](LICENSE)
 
-**TESSERA** is a browser-based, AI-assisted research workspace for transforming quantitative finance conversations, strategy memos, and transcripts into an interactive, connected knowledge graph and editable Markdown notes with mathematical formulas.
+**TESSERA** is a personal AI-assisted knowledge-mapping app. It takes a conversation, uses AI to suggest its key concepts and connections, and presents them as an interactive, Obsidian-like graph with Markdown notes behind the nodes.
 
-It brings together three familiar ways of working into one unified interface:
-1. **Chat & Conversation Mapping**: Paste research discussions and extract candidate concepts, models, claims, and open questions.
-2. **Obsidian-Style Interactive Knowledge Graph**: Navigate ideas through force-directed layouts, neighborhood zooms, and shortest-path connection chains.
-3. **Markdown-First Concept Notes**: Dive into mathematical equations ($\LaTeX$), empirical assumptions, and literature citations.
+The idea is deliberately focused: **AI conversation mapping + an explorable knowledge graph + Markdown notes, with a subtle quantitative touch.** TESSERA is not a general-purpose research suite or a trading platform. It is a visual way to turn useful conversations into a connected map that can be explored, edited, and understood.
 
 ---
 
-## Product Vision & Principles
+## How It Works
 
-Quantitative research rarely follows a linear trajectory. An inquiry into momentum signals inevitably touches market microstructure, order execution drag, volatility forecasting, portfolio weighting, and statistical inference. These ideas often become siloed in disconnected scratchpads and chat logs.
+1. **Bring in a conversation.** Paste a conversation or a selected passage into the mapper.
+2. **Ask AI to map it.** AI suggests important concepts, a short summary, and possible relationships between the concepts.
+3. **Review the suggestions.** Edit, accept, or reject proposed concepts and links. AI output stays a suggestion until the user approves it.
+4. **Explore the graph.** Approved concepts appear as nodes in an interactive graph. Select a node, zoom into its neighborhood, follow a connection, or switch back to the full map.
+5. **Open the Markdown note.** Each concept has a readable, editable Markdown note with its explanation, source passage, and related concepts.
 
-TESSERA makes these multi-disciplinary connections visible and navigable:
-- **No Account Barrier**: Instant access to an out-of-the-box quantitative finance graph with no sign-up or login required.
-- **Stateless Operating Model**: All edits, new nodes, and API keys exist strictly in the active browser tab's volatile memory. Refreshing or closing the tab clears all changes.
-- **Researcher in Control**: AI proposes candidate structures; the researcher reviews, edits definitions, chooses relationship types, and approves additions.
-- **Traceable Provenance**: Every concept and claim preserves its verbatim source quote, confidence score, and origin badge (`sample_dataset`, `ai_suggested`, or `researcher_authored`).
-- **Descriptive Analytics**: Graph metrics describe network topology (hubs, bridges, density); they do not predict asset returns or provide financial advice.
-
----
-
-## Core Capabilities & Architecture
-
-```
-                  ┌────────────────────────────────────────┐
-                  │          Research Input / Chat         │
-                  └───────────────────┬────────────────────┘
-                                      │
-                                      ▼
-                  ┌────────────────────────────────────────┐
-                  │    Stateless Concept Extraction        │
-                  │  (Guided Demo OR OpenAI/Claude/Gemini) │
-                  └───────────────────┬────────────────────┘
-                                      │
-                                      ▼
-                  ┌────────────────────────────────────────┐
-                  │        Extraction Review Queue         │
-                  │   (Inspect, Edit, Approve/Reject)      │
-                  └───────────────────┬────────────────────┘
-                                      │
-              ┌───────────────────────┴───────────────────────┐
-              ▼                                               ▼
-┌──────────────────────────┐                    ┌──────────────────────────┐
-│  Cytoscape Knowledge     │◄──────────────────►│  Markdown Notes & LaTeX  │
-│  Graph & Topology        │                    │  Editor with Math        │
-└─────────────┬────────────┘                    └─────────────┬────────────┘
-              │                                               │
-              └───────────────────────┬───────────────────────┘
-                                      ▼
-                  ┌────────────────────────────────────────┐
-                  │   Graph Analytics & Research Synthesis │
-                  │  (Degree Hubs, Bridges, Brief Export)  │
-                  └────────────────────────────────────────┘
-```
-
-### 1. AI-Assisted Conversation Mapping
-- Paste transcripts, strategy brainstorming, or paper excerpts.
-- Choose between **Guided Demo Mode** (pre-loaded quant discussions running deterministically with zero quota consumption) or **Live AI Extraction** (OpenAI `gpt-4o-mini`, Anthropic `claude-3-5-sonnet`, or Google `gemini-1.5-flash`).
-- Extracts candidate concepts, empirical claims, open research questions, and typed connections.
-
-### 2. Interactive Knowledge Graph (Cytoscape.js)
-- Dark-themed network canvas with customizable physics layouts:
-  - **Force-Directed (Cose)**: Organic clustering of related quant domains.
-  - **Concentric**: Concentric rings based on node degree centrality.
-  - **Circular / Tree / Grid**: Structural geometric arrangements.
-- **Local Ego-View Mode**: Isolate any selected concept and its 1-hop direct neighbors.
-- **Shortest Path Finder**: Select source and destination concepts to trace and animate connection paths across the network.
-- Visual encoding: Color-coded node types, domain indicators, directional arrows, and toggleable typed edge labels.
-
-### 3. Concept Types & Explicit Relational Semantics
-Concepts are classified into distinct structural archetypes:
-- `method`: Algorithmic routines (e.g. Mean-Variance Optimization, Volatility Targeting)
-- `model`: Mathematical frameworks (e.g. Fama-French 3-Factor, Black-Litterman, Almgren-Chriss, GARCH)
-- `dataset`: Underlying data sources (e.g. CRSP / Compustat Merged, TAQ Tick Data)
-- `instrument`: Traded contracts and assets (e.g. Equities, Futures, Options)
-- `metric`: Quantitative measures (e.g. Sharpe Ratio, Kyle's Lambda, Order Flow Imbalance, VaR)
-- `hypothesis`: Empirical anomalies (e.g. Cross-Sectional Momentum, Short-Term Reversal, Survivorship Bias)
-- `source`: Academic literature and papers
-- `research_question`: Open research inquiries (e.g. Factor Crowding Spirals)
-
-Connections carry explicit relational semantics:
-- `depends_on`: Model relies on a prior concept or assumption.
-- `extends`: Generalizes or improves upon an earlier framework.
-- `measures`: Metric quantifies or evaluates a model/process.
-- `uses_data_from`: Method or claim draws upon a dataset.
-- `supports` / `challenges`: Empirical evidence bears on a hypothesis.
-- `contradicts`: Theoretical or empirical tension between two claims.
-- `related_to`: Associative link.
-
-### 4. Markdown-First Notes with Math Equations ($\LaTeX$)
-- Dedicated Markdown editor with live KaTeX formula rendering.
-- Edit definitions, assumptions, and proofs in split view or full view.
-- In-memory version timeline tracking edits made during the active browser session.
-
-### 5. Descriptive Graph Analytics Dashboard (Recharts)
-- Real-time network statistics: node count, edge count, density, average degree.
-- Domain cluster distribution (horizontal bar chart).
-- Concept typology ratio (donut chart).
-- Central hub concepts and cross-domain bridge concepts ranking.
-
-### 6. Research Synthesis Brief Composer
-- Combines notes, references, and mathematical equations into an exportable research brief:
-  - 1. Core Research Question
-  - 2. Theoretical Context & Background
-  - 3. Referenced Graph Concepts
-  - 4. Empirical Assumptions
-  - 5. Experimental Next Steps
-- One-click copy to formatted Markdown or export.
+The result is a visual memory of a conversation: the original discussion provides context, the AI helps surface structure, the graph shows how ideas connect, and Markdown notes make each idea useful on its own.
 
 ---
 
-## Pre-Loaded Quantitative Research Library
+## The Product
 
-TESSERA ships with a rich, interconnected quantitative finance knowledge graph:
-- **Factor Research**: Fama-French 3-Factor, Cross-Sectional Momentum (Jegadeesh & Titman 1993), Carhart 4-Factor, Survivorship Bias, CRSP / Compustat Merged.
-- **Portfolio Construction**: Markowitz Mean-Variance Optimization (1952), Black-Litterman Bayesian Model (1992).
-- **Market Microstructure**: Kyle's Lambda (1985), Limit Order Book Imbalance (Cont et al. 2014).
-- **Execution & Trading**: Almgren-Chriss Optimal Execution Framework (2000).
-- **Risk Management**: Volatility Targeting (Harvey et al. 2018), Sharpe Ratio (1994), Value at Risk (VaR).
-- **Time Series & Econometrics**: GARCH(1,1) Conditional Heteroskedasticity (Bollerslev 1986).
+### AI Conversation Mapper
+The mapper is the starting point for creating a graph. A user pastes text, chooses an extraction action, and receives candidate concepts and relationships. Suggestions include concise definitions, the source passage they came from, and proposed relationship types such as *depends on*, *supports*, *contradicts*, *extends*, or *related to*.
 
----
+The user reviews the result before it changes the graph. This keeps the map understandable and gives the user control over AI-generated structure. A sample conversation and sample extraction let visitors try the flow without an API key.
 
-## Tech Stack
+### Obsidian-Like Graph View
+The graph is the main workspace. Concepts are nodes; links are edges. Users can pan and zoom, search for a concept, select a node, inspect its direct connections, and open its note. A local graph view focuses on a selected concept and its nearby nodes; the global view shows the full sample map.
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Frontend Framework** | [React 18](https://react.dev/) | Interactive single-page UI |
-| **Language** | [TypeScript 5.7](https://www.typescriptlang.org/) | Strict type definitions across graph nodes, edges, and session state |
-| **Build Tool** | [Vite 6](https://vite.dev/) | High-speed local dev server and optimized production bundler |
-| **Styling** | [Tailwind CSS 3.4](https://tailwindcss.com/) | Dark quant-terminal design system (`#07090e`, grid lines, accents) |
-| **Routing** | [React Router 7](https://reactrouter.com/) | Client-side routing (`/` landing page, `/app` workspace) |
-| **Graph Visualization** | [Cytoscape.js 3.30](https://js.cytoscape.org/) | Graph canvas, force-directed layouts, neighborhood focus, Dijkstra pathing |
-| **Animations & Motion** | [Motion for React](https://motion.dev/) | Landing page reveals, guided demo cursor walkthrough, transitions |
-| **Charts & Analytics** | [Recharts 2.15](https://recharts.github.io/) | Responsive domain distribution and typological charts |
-| **Carousel** | [Embla Carousel 8](https://www.embla-carousel.com/) | Touch, keyboard, and drag-enabled case study carousel |
-| **Math Rendering** | [KaTeX](https://katex.org/) + `remark-math` | Mathematical formula formatting ($LaTeX$) in Markdown |
-| **Icons** | [Lucide React](https://lucide.dev/) | Crisp, modern UI icons |
-| **Backend Proxy** | [Express 4](https://expressjs.com/) | Stateless proxy for OpenAI, Anthropic, and Gemini requests |
+Node labels remain clear, relationship types explain why ideas are connected, and selected concepts stand out without hiding the rest of the map. The interaction feels fluid and tactile, while the underlying content remains simple concepts and links.
+
+### Markdown Notes
+Selecting a node opens its Markdown note in a side panel or focused editor. A note can contain a definition, explanation, source excerpt, and links to related concepts. Users can edit the note during the current session, and see that content reflected in the graph when appropriate.
+
+### A Subtle Quant Touch
+Quantitative influence appears in the way the graph can be inspected and visualized, rather than restricting the app to finance topics. TESSERA shows simple graph measures such as node and connection counts, clusters, highly connected concepts, bridge concepts, and paths between selected ideas. These measures describe the structure of the current map; they do not claim that an idea is true or important simply because it has many links.
 
 ---
 
-## Project Structure
+## Demo Behavior & Stateless Operating Model
 
-```
-tessera/
-├── docs/
-│   └── description.md          # Original product specification and design goals
-├── server/
-│   └── index.ts                # Stateless Express AI extraction proxy
-├── src/
-│   ├── components/
-│   │   ├── analytics/          # Graph analytics dashboard & Recharts components
-│   │   │   └── AnalyticsDashboard.tsx
-│   │   ├── graph/              # Cytoscape interactive graph & concept detail panel
-│   │   │   ├── ConceptDetailPanel.tsx
-│   │   │   └── CytoscapeGraph.tsx
-│   │   ├── landing/            # Landing page sections: Walkthrough, Carousel
-│   │   │   ├── GuidedDemoWalkthrough.tsx
-│   │   │   └── QuantCarousel.tsx
-│   │   ├── mapper/             # Conversation & text extraction screen
-│   │   │   └── ConversationMapper.tsx
-│   │   ├── modals/             # API key, Add Connection, and Session info modals
-│   │   │   ├── AddConnectionModal.tsx
-│   │   │   ├── ApiKeyModal.tsx
-│   │   │   └── SessionInfoModal.tsx
-│   │   ├── notes/              # Markdown editor with LaTeX equations & timeline
-│   │   │   └── MarkdownEditor.tsx
-│   │   ├── review/             # Proposal review queue (accept/reject/edit)
-│   │   │   └── ExtractionReview.tsx
-│   │   └── synthesis/          # Research brief composer & Markdown exporter
-│   │       └── ResearchSynthesis.tsx
-│   ├── context/
-│   │   └── WorkspaceContext.tsx # Central in-memory state management & graph logic
-│   ├── data/
-│   │   ├── sampleConversations.ts # Ready-to-map quantitative research transcripts
-│   │   └── sampleGraph.ts       # Peer-reviewed quantitative concepts & typed edges
-│   ├── pages/
-│   │   ├── LandingPage.tsx     # Modern SaaS landing page with animated walkthrough
-│   │   └── WorkspacePage.tsx   # Main interactive research workspace
-│   ├── types/
-│   │   └── index.ts            # TypeScript interfaces for nodes, edges, and provenance
-│   ├── utils/
-│   │   └── visualEncoding.ts   # Typological colors, icons, and relationship styling
-│   ├── App.tsx                 # React Router configuration
-│   ├── index.css               # Tailwind CSS base and grid utilities
-│   └── main.tsx                # React DOM entry point
-├── index.html                  # HTML entry point with Geist & KaTeX fonts
-├── package.json
-├── tailwind.config.js
-├── tsconfig.json
-├── tsconfig.node.json
-└── vite.config.ts
-```
+TESSERA is a hobby and portfolio project designed as a no-account demo. Visitors can explore the preloaded sample graph without signing up. There are no profiles, saved workspaces, subscriptions, or cloud libraries.
+
+All changes made in the interactive demo—including graph edits, note edits, and the API key—exist only in the active tab's memory. They are not written to a database, browser storage, or cookies. Refreshing the page or closing the tab clears the session and restores the sample content.
+
+For live AI actions, a visitor can enter their own compatible API key for that session. TESSERA does not save the key. The built-in sample flow remains available without a key.
+
+---
+
+## Modern SaaS Visual Direction
+
+TESSERA is styled as a polished modern SaaS product: light, spacious, friendly, and premium.
+- **Palette**: Off-white/pale lavender background (`#faf9fc`), crisp white cards and panels, deep ink text (`#0f172a`), distinctive indigo/violet primary accent (`#6366f1` / `#7c3aed`), and subtle sky blue, mint, or coral accents.
+- **Layout**: Familiar SaaS patterns with compact navigation, clear main canvas, contextual detail panel, and generous whitespace.
+- **Motion**: Fluid animations reacting to scrolling, selecting, filtering, and navigating, with reduced-motion support.
+
+---
+
+## Screens
+
+1. **Landing Page**: Introduces TESSERA, explains the AI-to-graph workflow, shows the scripted product walkthrough, and links directly to the demo without a sign-up flow.
+2. **Demo Workspace**: Opens on a sample conversation map, centering on the interactive graph with navigation to the mapper and insights, plus a contextual detail panel for the selected concept.
+3. **Conversation Mapper**: Lets the visitor paste a conversation, request AI concept extraction, and review a short summary plus suggested concepts and links before adding them to the graph.
+4. **Concept and Markdown Note**: Shows a selected graph node's definition, source passage, typed relationships, and editable Markdown note.
+5. **Graph Insights**: Shows lightweight structural information about the current map: counts, clusters, connected concepts, bridges, and connection paths.
+6. **Session and API Key Panel**: Explains the stateless demo model, lets the visitor enter or clear an API key for the active tab, and provides a “Reset demo” action that restores the sample graph immediately.
+
+---
+
+## Open-Source Libraries & Tools
+
+| Library / Tool | Purpose in TESSERA |
+|---|---|
+| **React 18** | Interactive application UI and component architecture |
+| **Vite 6** | Local development server and production bundler |
+| **TypeScript 5.7** | Type safety across graph nodes, edges, and session state |
+| **Tailwind CSS 3.4** | Modern light SaaS design system and responsive styling |
+| **React Router 7** | Client-side routing between landing page and workspace screens |
+| **Cytoscape.js 3.30** | Interactive knowledge graph rendering, force-directed layouts, and path finding |
+| **React Markdown / Remark / KaTeX** | Human-readable Markdown note editing, syntax formatting, and formula rendering |
+| **Motion for React** | Landing page reveals, scripted cursor walkthrough, and smooth transitions |
+| **Recharts 2.15** | Lightweight structural insight charts and cluster distributions |
+| **Embla Carousel 8** | Interactive screen carousel with touch, keyboard, and button controls |
+| **Lucide React** | Consistent, modern UI icons |
+| **Node.js & Express** | Stateless AI proxy for OpenAI, Anthropic, and Gemini requests |
 
 ---
 
@@ -215,16 +104,11 @@ tessera/
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone git@github.com:pizzaparth/tessera.git
-   cd tessera
-   ```
-
-2. Install all dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+git clone git@github.com:pizzaparth/tessera.git
+cd tessera
+npm install
+```
 
 ### Running Locally
 
@@ -242,28 +126,14 @@ npm run dev:client
 npm run dev:server
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to launch the application.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ### Production Build
 
-To verify TypeScript types and generate the production bundle:
 ```bash
 npm run build
-```
-
-To preview the built production bundle locally:
-```bash
 npm run preview
 ```
-
----
-
-## Operating Without an API Key
-
-TESSERA is fully functional without entering an API key:
-- **Sample Knowledge Graph**: Explore 15+ peer-reviewed models, equations, and notes immediately.
-- **Guided Demo Mode**: Select any of the built-in research conversations in the Conversation Mapper (e.g. *Cross-Sectional Momentum vs Short-Term Reversal* or *High-Frequency Order Flow & Execution*), and click **Extract Concepts**. TESSERA generates simulated extraction proposals deterministically without consuming API quota.
-- **Optional Live AI Extraction**: If you wish to analyze custom text, click the **Use API Key** button to provide a session-only key for OpenAI, Anthropic, or Google Gemini. The key is held only in RAM and discarded when the tab is closed.
 
 ---
 

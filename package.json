@@ -2,7 +2,7 @@
   "name": "tessera",
   "private": true,
   "version": "1.0.0",
-  "description": "A quantitative research knowledge system - interactive graph, AI conversation mapping, and markdown notes",
+  "description": "Turn conversations into connected knowledge - personal AI-assisted knowledge-mapping app with Obsidian-like graph and Markdown notes",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"vite\" \"tsx watch server/index.ts\"",

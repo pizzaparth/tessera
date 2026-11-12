@@ -20,25 +20,25 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-const SYSTEM_PROMPT = `You are TESSERA's quantitative research concept extractor.
-Analyze the provided text excerpt from a quantitative research paper, discussion, or strategy memo.
-Extract concepts, claims, open questions, assumptions, and typed relationships.
+const SYSTEM_PROMPT = `You are TESSERA's AI conversation mapper.
+Analyze the provided conversation or passage.
+Extract key concepts, definitions, concise summaries, source excerpts, and typed relationships.
 
 Output strict JSON with this schema:
 {
-  "summary": "Concise summary of the excerpt",
-  "claims": ["List of core claims or hypotheses made"],
-  "openQuestions": ["Unresolved questions or research gaps"],
+  "summary": "Concise summary of the conversation",
+  "claims": ["List of core claims or ideas discussed"],
+  "openQuestions": ["Unresolved questions or research gaps mentioned"],
   "assumptions": ["Key underlying assumptions"],
   "concepts": [
     {
       "id": "snake_case_unique_id",
-      "label": "Human readable title",
+      "label": "Human readable concept title",
       "type": "method" | "model" | "dataset" | "instrument" | "metric" | "hypothesis" | "source" | "research_question",
       "domain": "Factor Research" | "Market Microstructure" | "Portfolio Construction" | "Time Series & Econometrics" | "Risk Management" | "Execution & Trading",
-      "summary": "1-2 sentence description",
+      "summary": "1-2 sentence concise definition or description",
       "confidence": 0.95,
-      "excerpt": "Verbatim supporting quote from the text",
+      "excerpt": "Verbatim supporting quote from the conversation",
       "suggestedEdges": [
         {
           "targetId": "existing_or_extracted_node_id",
