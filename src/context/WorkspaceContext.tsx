@@ -14,13 +14,12 @@ import {
 import { initialNodes, initialEdges } from '../data/sampleGraph';
 
 export type WorkspaceTab =
-  | 'overview'
   | 'graph'
   | 'mapper'
-  | 'review'
   | 'notes'
-  | 'analytics'
-  | 'synthesis';
+  | 'insights'
+  | 'review'
+  | 'analytics';
 
 interface HistoryEntry {
   id: string;
@@ -77,7 +76,18 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [edges, setEdges] = useState<ConceptEdge[]>(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('momentum_factor');
   const [filters, setFiltersState] = useState<FilterState>(initialFilters);
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
+  const [activeTab, setActiveTabState] = useState<WorkspaceTab>('graph');
+
+  // Normalize legacy tab references if any
+  const setActiveTab = (tab: WorkspaceTab) => {
+    if ((tab as string) === 'overview') {
+      setActiveTabState('graph');
+    } else if (tab === 'analytics') {
+      setActiveTabState('insights');
+    } else {
+      setActiveTabState(tab);
+    }
+  };
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<AIProvider>('openai');
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);

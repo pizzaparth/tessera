@@ -16,13 +16,10 @@ import {
   Activity,
   Layers,
   Network,
-  Share2,
   Route,
-  ShieldAlert,
   ArrowRight,
-  TrendingUp,
-  Compass,
-  Zap,
+  Info,
+  GitBranch,
 } from 'lucide-react';
 
 export const AnalyticsDashboard: React.FC = () => {
@@ -35,7 +32,7 @@ export const AnalyticsDashboard: React.FC = () => {
   const domainChartData = Object.entries(analytics.domainDistribution).map(([domain, count]) => ({
     domain,
     count,
-    color: DOMAIN_COLORS[domain as keyof typeof DOMAIN_COLORS] || '#38bdf8',
+    color: DOMAIN_COLORS[domain as keyof typeof DOMAIN_COLORS] || '#6366f1',
   }));
 
   // Prepare data for concept type distribution chart
@@ -79,103 +76,110 @@ export const AnalyticsDashboard: React.FC = () => {
   const activePath = calculateShortestPath(pathSource, pathTarget);
 
   return (
-    <div className="h-full flex flex-col bg-surface border border-surface-border rounded-xl overflow-hidden shadow-2xl">
+    <div className="h-full flex flex-col bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-subtle">
       {/* Top Banner */}
-      <div className="p-4 border-b border-surface-border bg-surface-elevated flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <span>Quantitative Knowledge Graph Analytics</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <Activity className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900">
+              Graph Insights & Structural Measures
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-              Descriptive Measures
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+              Subtle Quant Touch
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Topology summary, domain clusters, degree centrality, and bridge concepts across your active session.
+          <p className="text-xs text-slate-500 mt-1">
+            Structural topology of the current map: counts, clusters, connected concepts, bridge concepts, and paths.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-md">
-          <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <span className="text-[11px]">
-            Descriptive topology only. High centrality reflects graph structure, not investment performance or alpha predictability.
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl max-w-md">
+          <Info className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <span className="text-[11px] leading-snug">
+            These measures describe the structure of the current map; they do not claim that an idea is true simply because it has many links.
           </span>
         </div>
       </div>
 
-      {/* Main Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      {/* Main Body */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Metric Cards Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-xl bg-surface-card border border-surface-border space-y-1">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Total Concepts</span>
-            </span>
-            <div className="text-2xl font-bold font-mono text-white">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+            <div className="text-2xl font-bold text-indigo-600 font-mono">
               {analytics.nodeCount}
             </div>
-            <div className="text-[11px] text-slate-500">In-memory active nodes</div>
+            <div className="text-xs font-semibold text-slate-800">Concepts</div>
+            <div className="text-[11px] text-slate-500">Active nodes in memory</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-surface-card border border-surface-border space-y-1">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-              <Share2 className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Typed Links</span>
-            </span>
-            <div className="text-2xl font-bold font-mono text-cyan-300">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+            <div className="text-2xl font-bold text-emerald-600 font-mono">
               {analytics.edgeCount}
             </div>
-            <div className="text-[11px] text-slate-500">Explicit typed relationships</div>
+            <div className="text-xs font-semibold text-slate-800">Connections</div>
+            <div className="text-[11px] text-slate-500">Explicit typed links</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-surface-card border border-surface-border space-y-1">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-              <Network className="w-3.5 h-3.5 text-purple-400" />
-              <span>Network Density</span>
-            </span>
-            <div className="text-2xl font-bold font-mono text-purple-300">
-              {analytics.density}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+            <div className="text-2xl font-bold text-violet-600 font-mono">
+              {Object.keys(analytics.domainDistribution).length}
             </div>
-            <div className="text-[11px] text-slate-500">Edge-to-potential ratio</div>
+            <div className="text-xs font-semibold text-slate-800">Clusters</div>
+            <div className="text-[11px] text-slate-500">Domain categories</div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-surface-card border border-surface-border space-y-1">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-amber-400" />
-              <span>Bridge Nodes</span>
-            </span>
-            <div className="text-2xl font-bold font-mono text-amber-300">
-              {analytics.bridgeNodes.length}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1">
+            <div className="text-2xl font-bold text-amber-600 font-mono">
+              {(analytics.density * 100).toFixed(1)}%
             </div>
-            <div className="text-[11px] text-slate-500">Cross-domain connectors</div>
+            <div className="text-xs font-semibold text-slate-800">Graph Density</div>
+            <div className="text-[11px] text-slate-500">Actual vs max edges</div>
           </div>
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Domain Distribution Bar Chart */}
-          <div className="p-4 rounded-xl bg-surface-card border border-surface-border space-y-3">
-            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-              <span>Domain Cluster Breakdown</span>
-              <span className="text-[10px] text-slate-500 font-mono">Count by Sub-field</span>
-            </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cluster Distribution */}
+          <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Cluster Distribution</h3>
+                <p className="text-xs text-slate-500">Number of concepts per domain cluster</p>
+              </div>
+              <Layers className="w-4 h-4 text-indigo-500" />
+            </div>
+
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={domainChartData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                  <XAxis type="number" stroke="#475569" fontSize={11} />
-                  <YAxis type="category" dataKey="domain" stroke="#94a3b8" fontSize={10} width={130} />
+                <BarChart
+                  data={domainChartData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                >
+                  <XAxis type="number" stroke="#94a3b8" fontSize={11} />
+                  <YAxis
+                    type="category"
+                    dataKey="domain"
+                    stroke="#64748b"
+                    fontSize={10}
+                    width={110}
+                    tickFormatter={(val) => val.split(' ')[0]}
+                  />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0c101a',
-                      borderColor: '#1f2738',
-                      borderRadius: 8,
-                      fontSize: 12,
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e2e8f0',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      fontSize: '11px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                     }}
                   />
-                  <Bar dataKey="count" fill="#38bdf8" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                     {domainChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -185,12 +189,16 @@ export const AnalyticsDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Concept Type Distribution Donut Chart */}
-          <div className="p-4 rounded-xl bg-surface-card border border-surface-border space-y-3">
-            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-              <span>Concept Type Distribution</span>
-              <span className="text-[10px] text-slate-500 font-mono">Typological Ratio</span>
-            </h3>
+          {/* Concept Typology */}
+          <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Concept Typology</h3>
+                <p className="text-xs text-slate-500">Models, methods, hypotheses, metrics</p>
+              </div>
+              <Network className="w-4 h-4 text-indigo-500" />
+            </div>
+
             <div className="h-56 w-full flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -209,52 +217,56 @@ export const AnalyticsDashboard: React.FC = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0c101a',
-                      borderColor: '#1f2738',
-                      borderRadius: 8,
-                      fontSize: 12,
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e2e8f0',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      fontSize: '11px',
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap gap-2 justify-center text-[11px]">
-              {typeChartData.map((t) => (
-                <div key={t.name} className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                  <span className="text-slate-300">{t.name}:</span>
-                  <span className="font-mono text-white font-semibold">{t.value}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
-        {/* Structural Rankings Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Top Central Hubs */}
-          <div className="p-4 rounded-xl bg-surface-card border border-surface-border space-y-2.5">
-            <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Central Concept Hubs (Degree)</span>
-              <span className="text-[10px] text-slate-500">Direct connections</span>
-            </h3>
-            <div className="space-y-1.5">
+        {/* Central Hubs & Bridge Concepts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Central Hubs */}
+          <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Highly Connected Concepts</h3>
+                <p className="text-xs text-slate-500">Nodes with the highest degree of connections</p>
+              </div>
+              <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold">
+                Degree Centrality
+              </span>
+            </div>
+
+            <div className="space-y-2">
               {analytics.topCentralNodes.map((node, i) => (
                 <div
                   key={node.id}
-                  onClick={() => {
-                    selectNode(node.id);
-                    setActiveTab('graph');
-                  }}
-                  className="flex items-center justify-between p-2 rounded-lg bg-surface hover:bg-surface-elevated border border-surface-border cursor-pointer transition text-xs"
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100/80 transition text-xs"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-cyan-400 text-[11px] font-bold w-4">#{i + 1}</span>
-                    <span className="text-slate-200 font-medium truncate">{node.label}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-600">
+                      {i + 1}
+                    </span>
+                    <button
+                      onClick={() => {
+                        selectNode(node.id);
+                        setActiveTab('graph');
+                      }}
+                      className="font-medium text-slate-800 hover:text-indigo-600 truncate text-left"
+                    >
+                      {node.label}
+                    </button>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-[10px] text-slate-500">{node.domain}</span>
-                    <span className="font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px]">
+                    <span className="text-[11px] text-slate-500">{node.domain}</span>
+                    <span className="font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">
                       {node.degree} links
                     </span>
                   </div>
@@ -263,114 +275,131 @@ export const AnalyticsDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Cross-Domain Bridge Concepts */}
-          <div className="p-4 rounded-xl bg-surface-card border border-surface-border space-y-2.5">
-            <h3 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Domain Bridge Concepts</span>
-              <span className="text-[10px] text-slate-500">Cross-field links</span>
-            </h3>
-            <div className="space-y-1.5">
-              {analytics.bridgeNodes.length > 0 ? (
-                analytics.bridgeNodes.map((node, i) => (
-                  <div
-                    key={node.id}
-                    onClick={() => {
-                      selectNode(node.id);
-                      setActiveTab('graph');
-                    }}
-                    className="flex items-center justify-between p-2 rounded-lg bg-surface hover:bg-surface-elevated border border-surface-border cursor-pointer transition text-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono text-amber-400 text-[11px] font-bold w-4">#{i + 1}</span>
-                      <span className="text-slate-200 font-medium truncate">{node.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-[10px] text-slate-500">{node.domain}</span>
-                      <span className="font-mono text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded text-[11px]">
-                        {node.betweenness} bridges
-                      </span>
-                    </div>
+          {/* Bridge Concepts */}
+          <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Bridge Concepts</h3>
+                <p className="text-xs text-slate-500">Nodes bridging distinct domain clusters</p>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold">
+                Cross-Cluster
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {analytics.bridgeNodes.map((node, i) => (
+                <div
+                  key={node.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100/80 transition text-xs"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-600">
+                      {i + 1}
+                    </span>
+                    <button
+                      onClick={() => {
+                        selectNode(node.id);
+                        setActiveTab('graph');
+                      }}
+                      className="font-medium text-slate-800 hover:text-emerald-700 truncate text-left"
+                    >
+                      {node.label}
+                    </button>
                   </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-500 italic p-3">No cross-domain bridges detected.</p>
-              )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[11px] text-slate-500">{node.domain}</span>
+                    <span className="font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                      {node.betweenness} bridges
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Shortest Path Explorer */}
-        <div className="p-4 rounded-xl bg-surface-card border border-surface-border space-y-3">
+        {/* Path Explorer Between Ideas */}
+        <div className="p-5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Route className="w-4 h-4 text-cyan-400" />
-              <span>Quantitative Path Explorer</span>
-            </h3>
-            <span className="text-[11px] text-slate-500">
-              Calculate shortest connection chain between any two concepts
-            </span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Connection Path Finder</h3>
+              <p className="text-xs text-slate-500">
+                Trace the chain of relationships connecting any two concepts
+              </p>
+            </div>
+            <Route className="w-4 h-4 text-indigo-500" />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2 text-xs">
-            <select
-              value={pathSource}
-              onChange={(e) => setPathSource(e.target.value)}
-              className="w-full sm:w-1/2 p-2 rounded bg-surface border border-surface-border text-slate-200 outline-none"
-            >
-              {nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  From: {n.label}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-600">Start Concept</label>
+              <select
+                value={pathSource}
+                onChange={(e) => setPathSource(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.label} ({n.domain})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <ArrowRight className="w-4 h-4 text-slate-500 flex-shrink-0 hidden sm:block" />
-
-            <select
-              value={pathTarget}
-              onChange={(e) => setPathTarget(e.target.value)}
-              className="w-full sm:w-1/2 p-2 rounded bg-surface border border-surface-border text-slate-200 outline-none"
-            >
-              {nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  To: {n.label}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-600">Target Concept</label>
+              <select
+                value={pathTarget}
+                onChange={(e) => setPathTarget(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.label} ({n.domain})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="p-3 bg-[#080b12] border border-surface-border rounded-lg text-xs">
-            {activePath.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-emerald-400 font-semibold font-mono text-[11px]">
-                  Path ({activePath.length} steps):
-                </span>
+          {activePath.length > 0 ? (
+            <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-2">
+              <div className="text-xs font-semibold text-indigo-900 flex items-center justify-between">
+                <span>Shortest Path: {activePath.length - 1} hops ({activePath.length} concepts)</span>
+                <button
+                  onClick={() => {
+                    selectNode(pathSource);
+                    setActiveTab('graph');
+                  }}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 hover:underline"
+                >
+                  <span>View in Graph</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 {activePath.map((nodeId, idx) => {
                   const node = nodes.find((n) => n.id === nodeId);
                   return (
                     <React.Fragment key={nodeId}>
-                      <button
-                        onClick={() => {
-                          selectNode(nodeId);
-                          setActiveTab('graph');
-                        }}
-                        className="font-medium text-slate-200 hover:text-cyan-300 underline decoration-dotted"
-                      >
+                      <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-800 shadow-2xs">
                         {node?.label || nodeId}
-                      </button>
+                      </span>
                       {idx < activePath.length - 1 && (
-                        <ArrowRight className="w-3 h-3 text-slate-600" />
+                        <ArrowRight className="w-3 h-3 text-indigo-400" />
                       )}
                     </React.Fragment>
                   );
                 })}
               </div>
-            ) : (
-              <span className="text-slate-500 italic">
-                No direct path found between the selected concepts in the current graph.
-              </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-500 text-center">
+              No direct or indirect connection found between the selected concepts.
+            </div>
+          )}
         </div>
       </div>
     </div>

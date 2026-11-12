@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { AIProvider } from '../../types';
-import { Key, ShieldAlert, Check, X, Trash2, ExternalLink } from 'lucide-react';
+import { Key, ShieldAlert, Check, X, Trash2 } from 'lucide-react';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -28,80 +28,83 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-surface border border-surface-border rounded-2xl p-6 shadow-2xl space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xl space-y-5">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Key className="w-5 h-5 text-cyan-400" />
-              <h3 className="text-base font-bold text-white">Temporary AI Provider Key</h3>
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Key className="w-4 h-4" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Session API Key</h3>
             </div>
-            <p className="text-xs text-slate-400">
-              Enable live AI concept extraction directly from your own provider.
+            <p className="text-xs text-slate-500">
+              Provide an API key for live AI concept extraction during this session.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-white/5 transition"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Security Alert Note */}
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1 text-xs text-amber-200">
-          <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900">
+          <div className="flex items-center gap-1.5 font-semibold text-amber-800">
             <ShieldAlert className="w-4 h-4 flex-shrink-0" />
-            <span>Strictly In-Memory & Session-Only</span>
+            <span>Stateless & Memory-Only</span>
           </div>
-          <p className="text-[11px] leading-relaxed text-amber-300/80">
-            Your key stays in this active browser tab’s memory. It is never saved to localStorage, cookies, or a database. Reloading or closing the tab permanently erases it.
+          <p className="text-[11px] leading-relaxed text-amber-700">
+            Your key exists only in this active browser tab’s memory. It is never saved to a database, cookies, or local storage. Refreshing the tab clears it immediately.
           </p>
         </div>
 
         {/* Provider Selector */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Select Model Provider
-          </label>
+          <label className="text-xs font-semibold text-slate-700">AI Provider</label>
           <div className="grid grid-cols-3 gap-2">
-            {(['openai', 'anthropic', 'gemini'] as const).map((prov) => (
+            {[
+              { id: 'openai', label: 'OpenAI', model: 'gpt-4o-mini' },
+              { id: 'anthropic', label: 'Anthropic', model: 'claude-3-5-sonnet' },
+              { id: 'gemini', label: 'Gemini', model: 'gemini-1.5-flash' },
+            ].map((p) => (
               <button
-                key={prov}
-                onClick={() => setSelectedProvider(prov)}
-                className={`py-2 px-3 rounded-lg border text-xs capitalize font-medium transition ${
-                  selectedProvider === prov
-                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow'
-                    : 'bg-surface-card border-surface-border text-slate-400 hover:bg-white/5'
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedProvider(p.id as AIProvider)}
+                className={`p-2.5 rounded-xl border text-center transition ${
+                  selectedProvider === p.id
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-semibold shadow-2xs'
+                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
                 }`}
               >
-                {prov}
+                <div className="text-xs">{p.label}</div>
+                <div className="text-[10px] text-slate-400 truncate mt-0.5">{p.model}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Input key */}
+        {/* Key Input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>{selectedProvider.toUpperCase()} API Key</span>
-            <span className="text-[10px] text-slate-500">Starts with {selectedProvider === 'openai' ? 'sk-...' : selectedProvider === 'anthropic' ? 'sk-ant-...' : 'AIza...'}</span>
-          </label>
+          <label className="text-xs font-semibold text-slate-700">API Key String</label>
           <input
             type="password"
             value={tempKey}
             onChange={(e) => setTempKey(e.target.value)}
-            placeholder="Paste your API key here..."
-            className="w-full p-2.5 rounded-lg bg-[#080b12] text-white text-xs font-mono border border-surface-border focus:border-cyan-500 outline-none"
+            placeholder={`Enter your ${selectedProvider} API key...`}
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
           />
         </div>
 
-        {/* Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center justify-between pt-2">
           {apiKey ? (
             <button
               onClick={handleClear}
-              className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 p-2 rounded hover:bg-rose-500/10 transition"
+              className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-medium hover:underline"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear Key</span>
@@ -113,15 +116,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-2 text-xs text-slate-400 hover:text-slate-200"
+              className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition font-medium"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs shadow transition"
+              className="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition"
             >
-              Save in Memory
+              Save for Session
             </button>
           </div>
         </div>

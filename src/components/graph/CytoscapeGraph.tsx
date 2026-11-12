@@ -86,7 +86,7 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
 
     visibleNodes.forEach((node) => {
       const typeCfg = CONCEPT_TYPE_CONFIG[node.type];
-      const domainColor = DOMAIN_COLORS[node.domain] || '#38bdf8';
+      const domainColor = DOMAIN_COLORS[node.domain] || '#6366f1';
       elements.push({
         group: 'nodes',
         data: {
@@ -137,64 +137,67 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
         {
           selector: 'node',
           style: {
-            'background-color': '#0d1322',
-            'border-width': 2,
+            'background-color': '#ffffff',
+            'border-width': 2.5,
             'border-color': 'data(nodeColor)',
-            'border-opacity': 0.85,
+            'border-opacity': 1,
             label: 'data(label)',
-            color: '#e2e8f0',
-            'font-family': 'Geist, sans-serif',
+            color: '#1e293b',
+            'font-family': 'Geist, Inter, sans-serif',
             'font-size': '11px',
-            'font-weight': 500,
+            'font-weight': 600,
             'text-valign': 'bottom',
             'text-margin-y': 6,
             'text-max-width': '120px',
             'text-wrap': 'ellipsis',
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
+            'underlay-color': 'data(nodeColor)',
+            'underlay-padding': '4px',
+            'underlay-opacity': 0.12,
             'transition-property': 'background-color, border-color, border-width, opacity, width, height',
-            'transition-duration': 0.25,
+            'transition-duration': 0.2,
           },
         },
         {
           selector: 'node:selected',
           style: {
             'background-color': 'data(nodeColor)',
-            'border-width': 4,
-            'border-color': '#ffffff',
+            'border-width': 3,
+            'border-color': '#4338ca',
             'border-opacity': 1,
-            color: '#ffffff',
+            color: '#0f172a',
             'font-weight': 700,
-            'font-size': '13px',
-            width: 48,
-            height: 48,
-            'underlay-color': 'data(nodeColor)',
+            'font-size': '12px',
+            width: 44,
+            height: 44,
+            'underlay-color': '#6366f1',
             'underlay-padding': '8px',
-            'underlay-opacity': 0.4,
+            'underlay-opacity': 0.28,
           },
         },
         {
           selector: 'node.highlighted',
           style: {
             'border-width': 3,
-            'border-color': '#00f5a0',
+            'border-color': '#6366f1',
             opacity: 1,
-            'underlay-color': '#00f5a0',
+            'underlay-color': '#6366f1',
             'underlay-padding': '6px',
-            'underlay-opacity': 0.3,
+            'underlay-opacity': 0.2,
           },
         },
         {
           selector: 'node.dimmed',
           style: {
-            opacity: 0.15,
-            'border-opacity': 0.2,
+            opacity: 0.18,
+            'border-opacity': 0.3,
           },
         },
         {
           selector: 'edge',
           style: {
-            width: 1.5,
+            width: 1.8,
             'line-color': 'data(edgeColor)',
             'line-opacity': 0.6,
             'line-style': 'data(lineStyle)' as any,
@@ -203,24 +206,28 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
             'curve-style': 'bezier',
             'arrow-scale': 0.85,
             label: showEdgeLabels ? 'data(label)' : '',
-            color: '#94a3b8',
-            'font-family': 'JetBrains Mono, monospace',
+            color: '#475569',
+            'font-family': 'Geist, sans-serif',
             'font-size': '9px',
+            'font-weight': 500,
             'text-rotation': 'autorotate',
-            'text-background-color': '#07090e',
-            'text-background-opacity': 0.85,
-            'text-background-padding': '2px',
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.95,
+            'text-background-padding': '2.5px',
             'text-background-shape': 'roundrectangle',
+            'text-border-color': '#e2e8f0',
+            'text-border-width': 0.8,
+            'text-border-opacity': 0.7,
             'transition-property': 'line-color, width, opacity',
-            'transition-duration': 0.25,
+            'transition-duration': 0.2,
           },
         },
         {
           selector: 'edge.highlighted',
           style: {
             width: 3,
-            'line-color': '#00f5a0',
-            'target-arrow-color': '#00f5a0',
+            'line-color': '#6366f1',
+            'target-arrow-color': '#6366f1',
             'line-opacity': 1,
             'z-index': 99,
           },
@@ -235,8 +242,8 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
           selector: 'edge.path-highlight',
           style: {
             width: 3.5,
-            'line-color': '#fbbf24',
-            'target-arrow-color': '#fbbf24',
+            'line-color': '#f59e0b',
+            'target-arrow-color': '#f59e0b',
             'line-opacity': 1,
             'z-index': 100,
           },
@@ -245,10 +252,10 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
           selector: 'node.path-highlight',
           style: {
             'border-width': 4,
-            'border-color': '#fbbf24',
-            'underlay-color': '#fbbf24',
+            'border-color': '#f59e0b',
+            'underlay-color': '#f59e0b',
             'underlay-padding': '8px',
-            'underlay-opacity': 0.4,
+            'underlay-opacity': 0.35,
             opacity: 1,
           },
         },
@@ -256,8 +263,8 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
       layout: {
         name: layoutName,
         animate: true,
-        animationDuration: 600,
-        padding: 50,
+        animationDuration: 500,
+        padding: 40,
       } as any,
     });
 
@@ -279,8 +286,25 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
     // Background click handler
     cy.on('tap', (evt: EventObject) => {
       if (evt.target === cy) {
-        // clicked canvas background
-        cy.elements().removeClass('dimmed highlighted path-highlight');
+        if (!pathFindingMode) {
+          selectNode(null);
+        }
+      }
+    });
+
+    // Node hover effects
+    cy.on('mouseover', 'node', (evt: EventObject) => {
+      const node = evt.target;
+      if (!selectedNodeId && !pathFindingMode) {
+        const neighborhood = node.neighborhood().add(node);
+        cy.elements().not(neighborhood).addClass('dimmed');
+        neighborhood.addClass('highlighted');
+      }
+    });
+
+    cy.on('mouseout', 'node', () => {
+      if (!selectedNodeId && !pathFindingMode) {
+        cy.elements().removeClass('dimmed highlighted');
       }
     });
 
@@ -290,120 +314,134 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
     };
   }, []);
 
-  // Sync elements when data or filters change
+  // Sync elements when nodes/edges or filters change
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
-    cy.elements().remove();
-    cy.add(filteredElements);
+    cy.batch(() => {
+      cy.elements().remove();
+      cy.add(filteredElements);
+    });
 
-    const layout = cy.layout({
+    // Re-run layout
+    cy.layout({
       name: layoutName,
       animate: true,
       animationDuration: 500,
-      padding: 50,
-    } as any);
-    layout.run();
+      padding: 40,
+    } as any).run();
   }, [filteredElements, layoutName]);
 
-  // Sync selected node and highlight neighborhood
+  // Sync selection state and highlight neighborhood
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
-    cy.elements().removeClass('dimmed highlighted path-highlight');
+    cy.elements().removeClass('dimmed highlighted');
+    cy.nodes().unselect();
 
     if (selectedNodeId) {
-      const targetNode = cy.getElementById(selectedNodeId);
-      if (targetNode.length > 0) {
-        targetNode.select();
+      const selectedCyNode = cy.getElementById(selectedNodeId);
+      if (selectedCyNode.length > 0) {
+        selectedCyNode.select();
+        const neighborhood = selectedCyNode.neighborhood().add(selectedCyNode);
+        cy.elements().not(neighborhood).addClass('dimmed');
+        neighborhood.addClass('highlighted');
 
-        // Highlight neighborhood
-        const neighborhood = targetNode.neighborhood();
-        cy.elements().addClass('dimmed');
-        targetNode.removeClass('dimmed').addClass('highlighted');
-        neighborhood.removeClass('dimmed').addClass('highlighted');
-
-        // Smooth camera center
+        // Smoothly center camera on selected neighborhood
         cy.animate({
-          center: { eles: targetNode },
-          zoom: Math.max(cy.zoom(), 1.1),
+          center: { eles: neighborhood },
+          zoom: Math.min(cy.zoom(), 1.4),
           duration: 400,
         });
       }
     }
   }, [selectedNodeId]);
 
-  // Path finding logic between selectedNodeId and pathTargetId
+  // Handle path finding calculation (BFS)
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy) return;
+    if (!cy || !pathFindingMode || !selectedNodeId || !pathTargetId) return;
 
-    if (selectedNodeId && pathTargetId && selectedNodeId !== pathTargetId) {
-      const sourceEles = cy.getElementById(selectedNodeId);
-      const targetEles = cy.getElementById(pathTargetId);
+    cy.elements().removeClass('path-highlight');
 
-      if (sourceEles.length > 0 && targetEles.length > 0) {
-        // Use Cytoscape A* or Dijkstra shortest path algorithm
-        const dijkstra = cy.elements().dijkstra({
-          root: sourceEles,
-          directed: false,
-        });
+    // Dijkstra / BFS path
+    const startNode = cy.getElementById(selectedNodeId);
+    const endNode = cy.getElementById(pathTargetId);
 
-        const pathToTarget = dijkstra.pathTo(targetEles);
+    if (startNode.length > 0 && endNode.length > 0) {
+      const dijkstra = cy.elements().dijkstra({
+        root: startNode,
+        directed: false,
+      });
+
+      const pathToTarget = dijkstra.pathTo(endNode);
+      if (pathToTarget.length > 0) {
+        pathToTarget.addClass('path-highlight');
         setActivePathLength(pathToTarget.nodes().length);
-
-        cy.elements().addClass('dimmed');
-        pathToTarget.removeClass('dimmed').addClass('path-highlight');
-
         cy.animate({
-          fit: { eles: pathToTarget, padding: 80 },
+          fit: { eles: pathToTarget, padding: 60 },
           duration: 500,
         });
+      } else {
+        setActivePathLength(0);
       }
-    } else {
-      setActivePathLength(null);
     }
-  }, [selectedNodeId, pathTargetId]);
+  }, [selectedNodeId, pathTargetId, pathFindingMode]);
 
-  // Toolbar action helpers
-  const handleZoomIn = () => cyRef.current?.zoom(cyRef.current.zoom() * 1.25);
-  const handleZoomOut = () => cyRef.current?.zoom(cyRef.current.zoom() * 0.8);
-  const handleFit = () => cyRef.current?.fit(undefined, 40);
+  // Controls handlers
+  const handleZoomIn = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.animate({ zoom: cy.zoom() * 1.25, duration: 250 });
+  };
+
+  const handleZoomOut = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.animate({ zoom: cy.zoom() * 0.8, duration: 250 });
+  };
+
+  const handleFit = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.animate({ fit: { eles: cy.elements(), padding: 40 }, duration: 400 });
+  };
+
   const handleReset = () => {
     const cy = cyRef.current;
     if (!cy) return;
-    setPathTargetId('');
     setPathFindingMode(false);
+    setPathTargetId('');
     setActivePathLength(null);
     cy.elements().removeClass('dimmed highlighted path-highlight');
-    cy.layout({ name: layoutName, animate: true, padding: 50 } as any).run();
+    cy.layout({ name: layoutName, animate: true, padding: 40 } as any).run();
   };
 
   return (
-    <div className="relative w-full h-full min-h-[480px] flex flex-col bg-[#07090e] border border-surface-border rounded-xl overflow-hidden shadow-2xl">
+    <div className="relative w-full h-full min-h-[480px] flex flex-col bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-subtle">
       {/* Top Floating Controls Bar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         {/* Left Stats & Mode Indicator */}
-        <div className="flex items-center gap-2 bg-[#0c101a]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-surface-border pointer-events-auto shadow-md">
-          <div className="flex items-center gap-1.5 text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono text-emerald-400 font-semibold">{filteredElements.filter(e => e.group === 'nodes').length}</span>
+        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/90 pointer-events-auto shadow-sm">
+          <div className="flex items-center gap-1.5 text-xs text-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-slate-900">{filteredElements.filter(e => e.group === 'nodes').length}</span>
             <span className="text-slate-500">nodes</span>
-            <span className="text-slate-600">/</span>
-            <span className="font-mono text-cyan-400 font-semibold">{filteredElements.filter(e => e.group === 'edges').length}</span>
+            <span className="text-slate-300">•</span>
+            <span className="font-semibold text-slate-900">{filteredElements.filter(e => e.group === 'edges').length}</span>
             <span className="text-slate-500">links</span>
           </div>
 
-          <div className="h-3.5 w-px bg-slate-700 mx-1" />
+          <div className="h-3.5 w-px bg-slate-200 mx-1" />
 
           <button
             onClick={() => setShowEdgeLabels(!showEdgeLabels)}
-            className={`text-xs px-2 py-0.5 rounded transition ${
+            className={`text-xs px-2 py-0.5 rounded-md font-medium transition ${
               showEdgeLabels
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
             }`}
             title="Toggle typed edge labels"
           >
@@ -412,12 +450,12 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
         </div>
 
         {/* Right Toolbar Controls */}
-        <div className="flex items-center gap-1.5 bg-[#0c101a]/90 backdrop-blur-md p-1 rounded-lg border border-surface-border pointer-events-auto shadow-md">
+        <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200/90 pointer-events-auto shadow-sm">
           {/* Layout Selector */}
           <select
             value={layoutName}
             onChange={(e) => setLayoutName(e.target.value as any)}
-            className="bg-[#141a29] text-xs text-slate-200 border border-surface-border rounded px-2 py-1 outline-none focus:border-cyan-500"
+            className="bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1 outline-none focus:ring-1 focus:ring-indigo-500 transition cursor-pointer"
             title="Choose graph layout algorithm"
           >
             <option value="cose">Force-Directed (Cose)</option>
@@ -437,43 +475,43 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
                 cyRef.current?.elements().removeClass('path-highlight');
               }
             }}
-            className={`p-1.5 rounded transition ${
+            className={`p-1.5 rounded-lg transition ${
               pathFindingMode
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
             title={pathFindingMode ? 'Exit path finder' : 'Find shortest path between concepts'}
           >
             <Route className="w-4 h-4" />
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-0.5" />
+          <div className="h-4 w-px bg-slate-200 mx-0.5" />
 
           {/* Zoom controls */}
           <button
             onClick={handleZoomIn}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded transition"
+            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded transition"
+            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={handleFit}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded transition"
+            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
             title="Fit to screen"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
           <button
             onClick={handleReset}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded transition"
+            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
             title="Reset layout and filters"
           >
             <RotateCcw className="w-4 h-4" />
@@ -483,9 +521,9 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
 
       {/* Path Finding Guide Banner */}
       {pathFindingMode && (
-        <div className="absolute top-16 left-3 z-10 bg-amber-950/80 border border-amber-600/40 text-amber-200 text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 backdrop-blur-md shadow-lg">
-          <Info className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-          <span>
+        <div className="absolute top-16 left-3 z-10 bg-amber-50 border border-amber-200 text-amber-900 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 backdrop-blur-md shadow-md">
+          <Info className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+          <span className="font-medium">
             {pathTargetId
               ? `Shortest path: ${activePathLength} concepts connected`
               : 'Click any destination node to trace path from selected concept'}
@@ -497,7 +535,7 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
                 setActivePathLength(null);
                 cyRef.current?.elements().removeClass('path-highlight');
               }}
-              className="ml-2 text-amber-400 hover:text-white underline text-[11px]"
+              className="ml-2 text-amber-700 hover:text-amber-900 font-semibold underline text-[11px]"
             >
               Clear
             </button>
@@ -509,12 +547,12 @@ export const CytoscapeGraph: React.FC<CytoscapeGraphProps> = ({
       <div ref={containerRef} className="cytoscape-container w-full h-full flex-1" />
 
       {/* Bottom Concept Types Legend */}
-      <div className="absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-1.5 bg-[#090d16]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-surface-border text-[11px] pointer-events-auto">
-        <span className="text-slate-400 font-medium mr-1">Types:</span>
+      <div className="absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/90 text-[11px] pointer-events-auto shadow-sm">
+        <span className="text-slate-500 font-medium mr-1">Types:</span>
         {Object.entries(CONCEPT_TYPE_CONFIG).slice(0, 6).map(([typeKey, cfg]) => (
-          <div key={typeKey} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5">
+          <div key={typeKey} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 border border-slate-100">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
-            <span className="text-slate-300 capitalize">{cfg.label}</span>
+            <span className="text-slate-700 font-medium capitalize">{cfg.label}</span>
           </div>
         ))}
       </div>
