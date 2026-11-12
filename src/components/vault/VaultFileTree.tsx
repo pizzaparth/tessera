@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { Folder, FolderOpen, FileText, ChevronRight, Plus, Search, Trash2, X } from 'lucide-react';
+import { FileText, ChevronDown, Plus, Search, Trash2, X, Network, Sparkles, HelpCircle } from 'lucide-react';
+import { VaultLogo } from './Avatars';
+import { MOD } from './shortcuts';
 
 /** Wrap the matched part of `text` in a highlight. */
 const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) => {
@@ -10,14 +12,53 @@ const Highlight: React.FC<{ text: string; query: string }> = ({ text, query }) =
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-[#9d4edd]/30 text-white rounded-sm">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="bg-[#6d55bd]/15 text-black rounded-sm">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
 };
 
-export const VaultFileTree: React.FC = () => {
-  const { nodes, edges, selectedNodeId, openNote, createNote, openDeleteNoteModal, isSidebarOpen } = useWorkspace();
+const NavItem: React.FC<{
+  icon: typeof Network;
+  label: string;
+  active?: boolean;
+  shortcut?: string;
+  /** Shows a small "on" dot instead of the selected-card style */
+  indicator?: boolean;
+  onClick: () => void;
+}> = ({ icon: Icon, label, active, shortcut, indicator, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
+      active ? 'bg-white shadow-[0_1px_2px_rgba(15,10,20,0.08)] font-semibold text-black' : 'text-black/70 hover:bg-white/60 hover:text-black'
+    }`}
+    aria-pressed={active}
+  >
+    <Icon className="w-4 h-4 flex-shrink-0" />
+    <span className="truncate">{label}</span>
+    {indicator && <span className="w-1.5 h-1.5 rounded-full bg-[#28c840]" title="Open" />}
+    {shortcut && (
+      <kbd className="vault-kbd ml-auto opacity-0 group-hover:opacity-100 transition-opacity">{shortcut}</kbd>
+    )}
+  </button>
+);
+
+export const VaultFileTree: React.FC<{ floating?: boolean }> = ({ floating = false }) => {
+  const {
+    nodes,
+    edges,
+    selectedNodeId,
+    openNote,
+    createNote,
+    openDeleteNoteModal,
+    isSidebarOpen,
+    activeView,
+    setActiveView,
+    isAIOpen,
+    toggleAI,
+    openQuickSwitcher,
+    openHelpModal,
+  } = useWorkspace();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
@@ -61,39 +102,43 @@ export const VaultFileTree: React.FC = () => {
     setCollapsedFolders((prev) => ({ ...prev, [folderName]: !prev[folderName] }));
 
   const renderNoteRow = (node: (typeof nodes)[number]) => {
-    const isSelected = selectedNodeId === node.id;
+    const isSelected = selectedNodeId === node.id && activeView !== 'graph';
     const isOrphan = !linkCounts[node.id];
     return (
       <div
         key={node.id}
         className={`group relative flex items-center rounded-md transition-colors ${
-          isSelected ? 'bg-[#1a1a1a] text-white' : 'text-[#a3a3a3] hover:text-white hover:bg-[#111111]'
+          isSelected
+            ? 'bg-white shadow-[0_1px_2px_rgba(15,10,20,0.08)] text-black'
+            : selectedNodeId === node.id
+            ? 'bg-white/50 text-black'
+            : 'text-black/65 hover:text-black hover:bg-white/60'
         }`}
       >
-        {isSelected && <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-[#9d4edd]" />}
         <button
           onClick={() => openNote(node.id)}
-          className="flex-1 min-w-0 flex items-center gap-1.5 py-1 pr-1 pl-2 text-left"
+          className="flex-1 min-w-0 flex items-center gap-2 py-1.5 pl-2 pr-1 text-left"
           aria-current={isSelected ? 'true' : undefined}
           title={node.label}
         >
-          <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-[#b57aed]' : 'text-[#6b6b6b]'}`} />
-          <span className={`truncate ${isSelected ? 'font-medium' : ''}`}>
+          <FileText className="w-4 h-4 flex-shrink-0 opacity-60" />
+          <span className={`truncate ${isSelected ? 'font-semibold' : ''}`}>
             <Highlight text={node.label} query={searchQuery} />
           </span>
           {isOrphan && (
-            <span className="ml-auto text-[9px] text-[#7c7c7c] group-hover:hidden" title="No links to other notes">
-              unlinked
-            </span>
+            <span
+              className="ml-auto w-1.5 h-1.5 rounded-full bg-black/20 flex-shrink-0 group-hover:hidden"
+              title="Not linked to any other note"
+            />
           )}
         </button>
         <button
           onClick={() => openDeleteNoteModal(node.id, node.label)}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 mr-0.5 rounded text-[#7c7c7c] hover:text-[#ff5c9d] hover:bg-[#1f1f1f] transition"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 mr-1 rounded text-black/40 hover:text-[#e21e86] hover:bg-black/5 transition"
           title={`Delete “${node.label}”`}
           aria-label={`Delete ${node.label}`}
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     );
@@ -101,55 +146,78 @@ export const VaultFileTree: React.FC = () => {
 
   return (
     <aside
-      className="w-60 bg-black border-r border-[#1c1c1c] flex flex-col h-full flex-shrink-0 select-none text-xs absolute left-11 inset-y-0 z-30 shadow-2xl md:static md:shadow-none vault-fade-in"
-      aria-label="Files"
+      className={`vault-sidebar w-[240px] border-r border-black/5 flex flex-col h-full flex-shrink-0 select-none text-[14px] ${
+        floating ? 'absolute left-0 inset-y-0 z-40 shadow-[24px_0_60px_-24px_rgba(20,10,50,0.35)] vault-slide-in-left' : ''
+      }`}
+      aria-label="Vault"
     >
-      {/* Header & search */}
-      <div className="p-2.5 border-b border-[#1c1c1c] space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="font-semibold text-[11px] uppercase tracking-wider text-white">Files</span>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <span className="flex items-center gap-2 font-semibold text-[16px] tracking-[-0.01em] text-black">
+          <VaultLogo className="w-4 h-4" /> Brain Vault
+        </span>
+        <div className="flex items-center gap-0.5 -mr-1.5">
+          <button
+            onClick={openQuickSwitcher}
+            className="p-1.5 rounded-md text-black/45 hover:text-black hover:bg-white/70 transition-colors"
+            title={`Search notes (${MOD} K)`}
+            aria-label="Search notes"
+          >
+            <Search className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setIsInlineCreating(true)}
-            className="p-1 hover:text-white hover:bg-[#181818] rounded transition text-[#949494]"
-            title="New note in “Notes”"
+            className="p-1.5 rounded-md text-black/45 hover:text-black hover:bg-white/70 transition-colors"
+            title={`New note (${MOD} Shift N)`}
             aria-label="New note"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
+      </div>
 
-        <div className="flex items-center gap-1.5 bg-[#0a0a0a] border border-[#1e1e1e] focus-within:border-[#9d4edd]/70 rounded-md px-2 py-1 transition-colors">
-          <Search className="w-3.5 h-3.5 text-[#7c7c7c] flex-shrink-0" />
+      {/* Primary nav */}
+      <div className="px-3 space-y-0.5 mb-3">
+        <NavItem
+          icon={Network}
+          label="Graph view"
+          shortcut={`${MOD} G`}
+          active={activeView === 'graph'}
+          onClick={() => setActiveView('graph')}
+        />
+        <NavItem icon={Sparkles} label="Vault AI" shortcut={`${MOD} J`} indicator={isAIOpen} onClick={toggleAI} />
+      </div>
+
+      {/* Filter */}
+      <div className="px-3 mb-2">
+        <div className="flex items-center gap-2 rounded-lg bg-white/70 ring-1 ring-black/5 focus-within:ring-[#6d55bd]/50 focus-within:bg-white px-2.5 py-1.5 transition">
+          <Search className="w-3.5 h-3.5 text-black/40 flex-shrink-0" />
           <input
             type="text"
-            placeholder="Filter notes…"
+            placeholder="Filter notes"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setSearchQuery('');
               if (e.key === 'Enter' && filteredNodes?.length) openNote(filteredNodes[0].id);
             }}
-            className="bg-transparent text-white placeholder-[#6b6b6b] outline-none w-full text-xs"
+            className="bg-transparent text-black placeholder-black/40 outline-none w-full text-[13px]"
             aria-label="Filter notes"
           />
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="p-0.5 rounded text-[#7c7c7c] hover:text-white"
-              aria-label="Clear filter"
-            >
-              <X className="w-3 h-3" />
+            <button onClick={() => setSearchQuery('')} className="text-black/40 hover:text-black" aria-label="Clear filter">
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+      {/* Notes */}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
         {isInlineCreating && (
-          <div className="p-1.5 bg-[#121212] border border-[#9d4edd]/70 rounded-md mb-1.5 vault-fade-in">
-            <div className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#b57aed] flex-shrink-0" />
+          <div className="mb-2 rounded-lg bg-white ring-1 ring-[#6d55bd]/40 shadow-[0_1px_2px_rgba(15,10,20,0.08)] p-2 vault-fade-in">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#6d55bd] flex-shrink-0" />
               <input
                 type="text"
                 autoFocus
@@ -161,38 +229,38 @@ export const VaultFileTree: React.FC = () => {
                   if (e.key === 'Escape') setIsInlineCreating(false);
                 }}
                 onBlur={() => !inlineTitle.trim() && setIsInlineCreating(false)}
-                className="w-full bg-transparent text-white text-xs outline-none"
+                className="w-full bg-transparent text-black outline-none text-[14px] placeholder-black/35"
               />
             </div>
-            <div className="mt-1 pl-5 text-[10px] text-[#7c7c7c]">Enter to create · Esc to cancel</div>
+            <div className="mt-1 pl-6 text-[11px] text-black/40">Enter to create · Esc to cancel</div>
           </div>
         )}
 
         {filteredNodes ? (
           <div className="space-y-0.5">
-            <div className="text-[10px] text-[#7c7c7c] px-2 py-1">
+            <div className="px-2 pt-1 pb-1 text-[12px] text-black/45">
               {filteredNodes.length} {filteredNodes.length === 1 ? 'match' : 'matches'}
             </div>
-            {filteredNodes.map((node) => renderNoteRow(node))}
+            {filteredNodes.map(renderNoteRow)}
             {!nodes.some((n) => n.label.toLowerCase() === q) && (
               <button
                 onClick={() => {
                   createNote(searchQuery.trim());
                   setSearchQuery('');
                 }}
-                className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-md text-left text-[#b57aed] hover:bg-[#141414] transition"
+                className="w-full flex items-center gap-2 px-2 py-1.5 mt-1 rounded-md text-left text-[#6d55bd] hover:bg-white/70 transition"
               >
-                <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                <Plus className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">
-                  Create “<span className="text-white">{searchQuery.trim()}</span>”
+                  Create “<span className="font-medium">{searchQuery.trim()}</span>”
                 </span>
               </button>
             )}
           </div>
         ) : nodes.length === 0 ? (
-          <div className="px-3 py-8 text-center text-[#7c7c7c]">
+          <div className="px-3 py-8 text-center text-black/50 text-[13px]">
             <p>Your vault is empty.</p>
-            <button onClick={() => setIsInlineCreating(true)} className="mt-2 text-[#b57aed] hover:text-white">
+            <button onClick={() => setIsInlineCreating(true)} className="mt-2 text-[#6d55bd] font-medium hover:underline">
               Create your first note
             </button>
           </div>
@@ -200,45 +268,36 @@ export const VaultFileTree: React.FC = () => {
           Object.entries(groupedNodes).map(([folderName, folderNodes]) => {
             const isCollapsed = collapsedFolders[folderName];
             return (
-              <div key={folderName} className="mb-1">
+              <div key={folderName} className="mb-3">
                 <button
                   onClick={() => toggleFolder(folderName)}
-                  className="w-full flex items-center justify-between px-1.5 py-1 rounded-md text-[#a3a3a3] hover:text-white hover:bg-[#111111] transition font-medium group text-[11px]"
+                  className="w-full flex items-center gap-1 px-2 mb-1 text-[12px] text-black/45 hover:text-black/70 transition-colors"
                   aria-expanded={!isCollapsed}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <ChevronRight
-                      className={`w-3 h-3 text-[#6b6b6b] transition-transform duration-150 ${isCollapsed ? '' : 'rotate-90'}`}
-                    />
-                    {isCollapsed ? (
-                      <Folder className="w-3.5 h-3.5 text-[#9d4edd]" />
-                    ) : (
-                      <FolderOpen className="w-3.5 h-3.5 text-[#9d4edd]" />
-                    )}
-                    <span className="truncate">{folderName}</span>
-                  </div>
-                  <span className="text-[10px] text-[#6b6b6b] group-hover:text-[#949494] tabular-nums">
-                    {folderNodes.length}
-                  </span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`} />
+                  <span className="truncate">{folderName}</span>
+                  <span className="ml-auto tabular-nums">{folderNodes.length}</span>
                 </button>
-
-                {!isCollapsed && (
-                  <div className="ml-3 pl-1.5 border-l border-[#1c1c1c] space-y-px mt-0.5">
-                    {folderNodes.map((node) => renderNoteRow(node))}
-                  </div>
-                )}
+                {!isCollapsed && <div className="space-y-0.5">{folderNodes.map(renderNoteRow)}</div>}
               </div>
             );
           })
         )}
       </div>
 
-      <div className="px-3 py-2 border-t border-[#1c1c1c] text-[10px] text-[#7c7c7c] flex items-center justify-between">
-        <span>
-          {nodes.length} notes · {Object.keys(groupedNodes).length} folders
-        </span>
-        <button onClick={() => setIsInlineCreating(true)} className="text-[#949494] hover:text-white transition">
-          + New note
+      {/* Footer */}
+      <div className="px-3 py-2.5 border-t border-black/5 flex items-center justify-between text-[13px]">
+        <button
+          onClick={openHelpModal}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-black/55 hover:text-black hover:bg-white/60 transition-colors"
+        >
+          <HelpCircle className="w-4 h-4" /> Shortcuts
+        </button>
+        <button
+          onClick={() => setIsInlineCreating(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-black/55 hover:text-black hover:bg-white/60 transition-colors"
+        >
+          <Plus className="w-4 h-4" /> New note
         </button>
       </div>
     </aside>

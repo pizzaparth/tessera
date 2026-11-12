@@ -6,12 +6,9 @@ import { SHORTCUTS } from '../vault/shortcuts';
 
 const NEW_FOLDER = '__new_folder__';
 
-const inputClass =
-  'w-full bg-[#121212] text-white border border-[#262626] focus:border-[#9d4edd] rounded-lg px-3 py-2 text-xs outline-none transition-colors placeholder-[#5f5f5f]';
-const secondaryBtn =
-  'px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#a3a3a3] hover:text-white hover:bg-[#181818] transition-colors';
-const primaryBtn =
-  'px-4 py-1.5 rounded-lg text-xs font-medium bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors';
+const inputClass = 'vault-input';
+const secondaryBtn = 'vault-pill-ghost';
+const primaryBtn = 'atlas-pill atlas-pill-sm !px-4 disabled:opacity-40 disabled:cursor-not-allowed';
 
 const ModalHeader: React.FC<{ id: string; icon: React.ReactNode; title: string; subtitle?: string; onClose: () => void }> = ({
   id,
@@ -20,20 +17,20 @@ const ModalHeader: React.FC<{ id: string; icon: React.ReactNode; title: string; 
   subtitle,
   onClose,
 }) => (
-  <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-[#1c1c1c]">
+  <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-1">
     <div className="flex items-center gap-2.5">
       {icon}
       <div>
-        <h3 id={id} className="font-semibold text-sm text-white">
+        <h3 id={id} className="atlas-display text-[22px] leading-tight text-black">
           {title}
         </h3>
-        {subtitle && <p className="text-[11px] text-[#8a8a8a] mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[14px] text-black/55 mt-1">{subtitle}</p>}
       </div>
     </div>
     <button
       data-modal-close
       onClick={onClose}
-      className="text-[#8a8a8a] hover:text-white p-1 -m-1 rounded transition"
+      className="text-black/40 hover:text-black p-1.5 -m-1 rounded-full hover:bg-black/5 transition"
       aria-label="Close"
     >
       <X className="w-4 h-4" />
@@ -100,13 +97,13 @@ export const VaultModals: React.FC = () => {
         <ModalShell onClose={closeCreateNoteModal} labelledBy="create-note-title">
           <ModalHeader
             id="create-note-title"
-            icon={<FileText className="w-4 h-4 text-[#b57aed]" />}
+            icon={null}
             title="New note"
             onClose={closeCreateNoteModal}
           />
           <form onSubmit={handleCreateNoteSubmit} className="px-6 py-5 space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="new-note-title" className="text-xs text-[#a3a3a3] font-medium">
+              <label htmlFor="new-note-title" className="text-[13px] text-black/60 font-medium">
                 Title
               </label>
               <input
@@ -119,31 +116,31 @@ export const VaultModals: React.FC = () => {
                 className={inputClass}
               />
               {titleTaken && (
-                <p className="text-[11px] text-[#ffb703]">A note with this title exists. A copy will be created.</p>
+                <p className="text-[12px] text-[#b45309]">A note with this title exists. A copy will be created.</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="new-note-folder" className="text-xs text-[#a3a3a3] font-medium">
+              <label htmlFor="new-note-folder" className="text-[13px] text-black/60 font-medium">
                 Folder
               </label>
               <select
                 id="new-note-folder"
                 value={folderChoice}
                 onChange={(e) => setFolderChoice(e.target.value)}
-                className={`${inputClass} cursor-pointer`}
+                className={`${inputClass} cursor-pointer appearance-none`}
               >
                 {uniqueFolders.map((f) => (
-                  <option key={f} value={f} className="bg-black text-white">
+                  <option key={f} value={f}>
                     {f}
                   </option>
                 ))}
                 {!uniqueFolders.includes('Notes') && (
-                  <option value="Notes" className="bg-black text-white">
+                  <option value="Notes">
                     Notes
                   </option>
                 )}
-                <option value={NEW_FOLDER} className="bg-black text-white">
+                <option value={NEW_FOLDER}>
                   + New folder…
                 </option>
               </select>
@@ -177,14 +174,14 @@ export const VaultModals: React.FC = () => {
         <ModalShell onClose={closeDeleteNoteModal} widthClass="max-w-sm" labelledBy="delete-note-title">
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[#ff2a85]/10 border border-[#ff2a85]/20">
-                <Trash2 className="w-5 h-5 text-[#ff5c9d]" />
+              <div className="p-2.5 rounded-xl bg-[#fff1f6]">
+                <Trash2 className="w-5 h-5 text-[#e21e86]" />
               </div>
-              <h3 id="delete-note-title" className="font-semibold text-sm text-white">
+              <h3 id="delete-note-title" className="atlas-display text-[22px] leading-tight text-black">
                 Delete “{noteToDelete.label}”?
               </h3>
             </div>
-            <p className="text-xs text-[#c4c4c4] leading-relaxed">
+            <p className="text-[14px] text-black/65 leading-[1.55]">
               The note
               {deleteLinkCount > 0 && ` and its ${deleteLinkCount} connection${deleteLinkCount === 1 ? '' : 's'}`} will be
               removed from the vault. This can't be undone.
@@ -196,7 +193,7 @@ export const VaultModals: React.FC = () => {
               <button
                 type="button"
                 onClick={confirmDeleteNote}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#e0246f] hover:bg-[#c81e62] text-white transition-colors"
+                className="atlas-pill atlas-pill-sm !px-4 !bg-[#e21e86] hover:!bg-[#c81a74]"
               >
                 Delete note
               </button>
@@ -210,14 +207,14 @@ export const VaultModals: React.FC = () => {
         <ModalShell onClose={closeResetVaultModal} widthClass="max-w-sm" labelledBy="reset-vault-title">
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-[#ffb703]/10 border border-[#ffb703]/20">
-                <RotateCcw className="w-5 h-5 text-[#ffb703]" />
+              <div className="p-2.5 rounded-xl bg-[#fff6e8]">
+                <RotateCcw className="w-5 h-5 text-[#d97706]" />
               </div>
-              <h3 id="reset-vault-title" className="font-semibold text-sm text-white">
+              <h3 id="reset-vault-title" className="atlas-display text-[22px] leading-tight text-black">
                 Reset the vault?
               </h3>
             </div>
-            <p className="text-xs text-[#c4c4c4] leading-relaxed">
+            <p className="text-[14px] text-black/65 leading-[1.55]">
               This replaces your {nodes.length} notes with the original sample notes, resets graph settings and clears
               the chat. Notes you created or edited will be lost.
             </p>
@@ -231,7 +228,7 @@ export const VaultModals: React.FC = () => {
                   resetVault();
                   closeResetVaultModal();
                 }}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#ffb703] hover:bg-[#e6a502] text-black transition-colors"
+                className="atlas-pill atlas-pill-sm !px-4"
               >
                 Reset vault
               </button>
@@ -245,17 +242,17 @@ export const VaultModals: React.FC = () => {
         <ModalShell onClose={closeHelpModal} widthClass="max-w-lg" labelledBy="help-title" className="max-h-[85vh] flex flex-col">
           <ModalHeader
             id="help-title"
-            icon={<HelpCircle className="w-4 h-4 text-[#b57aed]" />}
+            icon={null}
             title="Guide & shortcuts"
             onClose={closeHelpModal}
           />
-          <div className="px-6 py-5 space-y-5 text-xs text-[#c4c4c4] overflow-y-auto">
+          <div className="px-6 py-5 space-y-6 text-[14px] text-black/70 overflow-y-auto">
             <section className="space-y-2">
-              <h4 className="font-semibold text-white">Keyboard</h4>
+              <h4 className="font-semibold text-black mb-1">Keyboard</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
                 {SHORTCUTS.map((s) => (
                   <div key={s.label} className="flex items-center justify-between gap-3">
-                    <span className="text-[#a3a3a3]">{s.label}</span>
+                    <span className="text-black/65">{s.label}</span>
                     <kbd className="vault-kbd">{s.keys}</kbd>
                   </div>
                 ))}
@@ -263,39 +260,38 @@ export const VaultModals: React.FC = () => {
             </section>
 
             <section className="space-y-1.5">
-              <h4 className="font-semibold text-white">Graph</h4>
-              <ul className="list-disc pl-4 space-y-1 text-[#a3a3a3] marker:text-[#5f5f5f]">
+              <h4 className="font-semibold text-black mb-1">Graph</h4>
+              <ul className="list-disc pl-5 space-y-1.5 text-black/65 marker:text-black/30">
                 <li>Click a node to select it and highlight its connections. Double-click to open the note.</li>
                 <li>Scroll to zoom, drag the background to pan, drag a node to move it.</li>
-                <li>Use the zoom buttons (bottom right) to fit the whole graph in view.</li>
                 <li>The sliders icon (top right) holds forces, display, color groups and filters.</li>
               </ul>
             </section>
 
             <section className="space-y-1.5">
-              <h4 className="font-semibold text-white">Linking notes</h4>
-              <p className="text-[#a3a3a3] leading-relaxed">
-                Type <code className="text-[#b57aed] bg-[#121212] px-1.5 py-0.5 rounded">[[Note Title]]</code> in a note
+              <h4 className="font-semibold text-black mb-1">Linking notes</h4>
+              <p className="text-black/65 leading-[1.55]">
+                Type <code className="text-[#6d55bd] bg-[#f7f5ff] px-1.5 py-0.5 rounded font-mono text-[13px]">[[Note Title]]</code> in a note
                 to link it. The connection appears in the graph as you type. Links to notes that don't exist yet are
                 shown dashed; click one to create that note.
               </p>
             </section>
 
             <section className="space-y-1.5">
-              <h4 className="font-semibold text-white">AI assistant</h4>
-              <p className="text-[#a3a3a3] leading-relaxed">
+              <h4 className="font-semibold text-black mb-1">AI assistant</h4>
+              <p className="text-black/65 leading-[1.55]">
                 Ask questions about your notes or use “Expand with AI”. New concepts the assistant proposes are added to
                 the graph automatically under <em>AI Discoveries</em>.
               </p>
             </section>
 
-            <p className="text-[11px] text-[#7c7c7c]">Your vault is saved in this browser. Use Reset (top bar) to restore the samples.</p>
+            <p className="text-[13px] text-black/45">Your vault is saved in this browser. Use Reset (top bar) to restore the samples.</p>
           </div>
-          <div className="flex items-center justify-end px-6 py-3 border-t border-[#1c1c1c]">
+          <div className="flex items-center justify-end px-6 py-4 border-t border-black/5">
             <button
               type="button"
               onClick={closeHelpModal}
-              className="px-4 py-1.5 rounded-lg text-xs font-medium bg-[#181818] hover:bg-[#222222] text-white transition-colors"
+              className="atlas-pill atlas-pill-sm !px-5"
             >
               Got it
             </button>

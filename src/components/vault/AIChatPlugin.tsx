@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { useWorkspace } from '../../context/WorkspaceContext';
+import { useWorkspace, findNodeByTitle } from '../../context/WorkspaceContext';
 import { AIProvider } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sparkles, ArrowUp, X, GitBranch, ArrowRight, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Send, X, GitBranch, ArrowRight, AlertTriangle, ChevronDown } from 'lucide-react';
+import { AgentAvatar, UserAvatar } from './Avatars';
 import { MOD } from './shortcuts';
 
 interface ProviderOption {
@@ -70,6 +71,13 @@ const SUGGESTIONS = [
 ];
 
 const MAX_INPUT_HEIGHT = 160;
+const WIKILINK_PREFIX = '#wikilink:';
+
+/** Make [[links]] in AI answers clickable. */
+const linkify = (md: string) =>
+  md.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, t: string, alias?: string) =>
+    `[${(alias || t).trim()}](<${WIKILINK_PREFIX}${encodeURIComponent(t.trim())}>)`
+  );
 
 export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = false }) => {
   const {
@@ -80,13 +88,16 @@ export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = fals
     toggleAI,
     selectedNode,
     selectNode,
+    openNote,
     setActiveView,
+    nodes,
     activeProvider,
     activeModel,
     setActiveModel,
   } = useWorkspace();
 
   const [input, setInput] = useState('');
+  const [statusIndex, setStatusIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,6 +106,14 @@ export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = fals
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [chatMessages, isChatLoading]);
+
+  // Cycle through progress lines while waiting, like the landing preview
+  useEffect(() => {
+    if (!isChatLoading) return;
+    setStatusIndex(0);
+    const t = window.setInterval(() => setStatusIndex((i) => i + 1), 1300);
+    return () => window.clearInterval(t);
+  }, [isChatLoading]);
 
   // Focus the composer when the panel opens
   useEffect(() => {
@@ -131,125 +150,134 @@ export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = fals
     }
   };
 
-  const currentProvider = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
   const hasUserMessages = chatMessages.some((m) => m.role === 'user');
+  const statuses = [
+    `Reading ${nodes.length} notes in your vault…`,
+    selectedNode ? `Looking at ${selectedNode.label}…` : 'Matching concepts across folders…',
+    'Drafting linked notes…',
+  ];
 
   return (
     <aside
-      className={`w-[min(380px,calc(100vw-44px))] bg-black border-l border-[#1c1c1c] flex flex-col h-full flex-shrink-0 select-none text-xs ${
-        floating ? 'absolute inset-y-0 right-0 z-40 shadow-[-24px_0_60px_-20px_rgba(0,0,0,0.9)] vault-slide-in-right' : 'relative z-30'
+      className={`w-[min(400px,calc(100vw-24px))] bg-white border-l border-black/5 flex flex-col h-full flex-shrink-0 select-none ${
+        floating ? 'absolute inset-y-0 right-0 z-40 shadow-[-24px_0_60px_-24px_rgba(20,10,50,0.35)] vault-slide-in-right' : 'relative z-30'
       }`}
-      aria-label="AI assistant"
+      aria-label="Vault AI"
     >
       {/* Header */}
-      <div className="h-12 px-3 border-b border-[#1c1c1c] flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="w-6 h-6 rounded-md flex items-center justify-center text-white flex-shrink-0"
-            style={{ backgroundColor: currentProvider.accentColor }}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
-          <div className="min-w-0">
-            <div className="font-semibold text-white text-xs">AI Assistant</div>
-            {/* Model picker: one control instead of separate provider + model selects */}
-            <label className="relative flex items-center gap-1 text-[11px] text-[#a3a3a3] hover:text-white cursor-pointer">
-              <span className="sr-only">Model</span>
-              <select
-                value={`${activeProvider}::${activeModel}`}
-                onChange={(e) => {
-                  const [prov, model] = e.target.value.split('::');
-                  setActiveModel(model, prov as AIProvider);
-                }}
-                className="appearance-none bg-transparent pr-4 outline-none cursor-pointer truncate max-w-[200px]"
-              >
-                {PROVIDERS.map((p) => (
-                  <optgroup key={p.id} label={p.name} className="bg-black">
-                    {p.models.map((m) => (
-                      <option key={m.id} value={`${p.id}::${m.id}`} className="bg-black text-white">
-                        {m.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <ChevronDown className="w-3 h-3 absolute right-0 pointer-events-none" />
-            </label>
-          </div>
+      <div className="h-12 px-4 border-b border-black/5 flex items-center justify-between gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="font-semibold text-[16px] tracking-[-0.01em]">Vault AI</span>
+          <span className="vault-badge">Agent</span>
         </div>
-
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          {/* Single model picker */}
+          <label className="relative flex items-center rounded-full bg-black/[0.04] hover:bg-black/[0.07] transition-colors cursor-pointer">
+            <span className="sr-only">Model</span>
+            <select
+              value={`${activeProvider}::${activeModel}`}
+              onChange={(e) => {
+                const [prov, model] = e.target.value.split('::');
+                setActiveModel(model, prov as AIProvider);
+              }}
+              className="appearance-none bg-transparent pl-3 pr-7 py-1 text-[12.5px] font-medium text-black/70 outline-none cursor-pointer max-w-[170px] truncate"
+            >
+              {PROVIDERS.map((p) => (
+                <optgroup key={p.id} label={p.name}>
+                  {p.models.map((m) => (
+                    <option key={m.id} value={`${p.id}::${m.id}`}>
+                      {m.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-2 pointer-events-none text-black/45" />
+          </label>
           <button
             onClick={toggleAI}
-            className="p-1.5 text-[#8a8a8a] hover:text-white hover:bg-[#181818] rounded transition"
+            className="p-1.5 rounded-full text-black/45 hover:text-black hover:bg-black/5 transition"
             title={`Close (${MOD} J)`}
-            aria-label="Close AI assistant"
+            aria-label="Close Vault AI"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-4 select-text" aria-live="polite">
+      {/* Thread */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-5 select-text" aria-live="polite">
         {chatMessages.map((msg) => {
           const isUser = msg.role === 'user';
-          if (isUser) {
-            return (
-              <div key={msg.id} className="flex justify-end">
-                <div className="max-w-[88%] rounded-2xl rounded-br-md px-3.5 py-2 bg-[#1c1530] border border-[#9d4edd]/25 text-white text-[12.5px] leading-relaxed whitespace-pre-wrap break-words">
-                  {msg.content}
-                </div>
-              </div>
-            );
-          }
           return (
-            <div key={msg.id} className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5 text-[10px] text-[#7c7c7c] px-0.5 select-none">
-                <Sparkles className="w-3 h-3 text-[#b57aed]" />
-                <span className="text-[#c4c4c4] font-medium">{modelDisplayName(msg.model || activeModel)}</span>
-                <span>· {msg.timestamp}</span>
-                {msg.isSimulated && (
-                  <span
-                    className="ml-1 rounded border border-[#2a2a2a] px-1 text-[9px] uppercase tracking-wide text-[#8a8a8a]"
-                    title="This answer came from the built-in demo generator"
+            <div key={msg.id} className="flex gap-3 vault-fade-in">
+              {isUser ? <UserAvatar /> : <AgentAvatar />}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[14px] select-none">
+                  <span className="font-semibold">{isUser ? 'You' : 'Vault AI'}</span>
+                  {!isUser && <span className="vault-badge">Agent</span>}
+                  <span className="text-black/40 text-[12px]">{msg.timestamp}</span>
+                  {msg.isSimulated && (
+                    <span
+                      className="text-[11px] text-black/40 ring-1 ring-black/10 rounded px-1"
+                      title="This answer came from the built-in demo generator"
+                    >
+                      demo
+                    </span>
+                  )}
+                </div>
+
+                {isUser ? (
+                  <p className="text-[14.5px] leading-[1.5] text-black/85 whitespace-pre-wrap break-words">{msg.content}</p>
+                ) : (
+                  <div
+                    className={`text-[14.5px] leading-[1.5] break-words ${
+                      msg.isError ? 'mt-1 rounded-xl bg-[#fff1f6] ring-1 ring-[#e21e86]/15 px-3 py-2.5 text-black/80' : 'text-black/85'
+                    }`}
                   >
-                    demo
-                  </span>
+                    {msg.isError && <AlertTriangle className="w-4 h-4 text-[#e21e86] mb-1" />}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1 marker:text-black/30">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1 marker:text-black/40">{children}</ol>,
+                        strong: ({ children }) => <strong className="font-semibold text-black">{children}</strong>,
+                        em: ({ children }) => <em className="text-black/65">{children}</em>,
+                        code: ({ children }) => (
+                          <code className="bg-black/5 px-1 py-0.5 rounded font-mono text-[12.5px]">{children}</code>
+                        ),
+                        a: ({ href, children }) => {
+                          if (href?.startsWith(WIKILINK_PREFIX)) {
+                            const match = findNodeByTitle(nodes, decodeURIComponent(href.slice(WIKILINK_PREFIX.length)));
+                            return match ? (
+                              <button type="button" onClick={() => openNote(match.id)} className="internal-link">
+                                {children}
+                              </button>
+                            ) : (
+                              <span className="text-[#6d55bd] font-medium">{children}</span>
+                            );
+                          }
+                          return (
+                            <a href={href} target="_blank" rel="noreferrer" className="text-[#6d55bd] font-medium underline">
+                              {children}
+                            </a>
+                          );
+                        },
+                      }}
+                    >
+                      {linkify(msg.content)}
+                    </ReactMarkdown>
+                  </div>
                 )}
-              </div>
-              <div
-                className={`rounded-xl px-3.5 py-2.5 text-[12.5px] leading-relaxed break-words ${
-                  msg.isError
-                    ? 'bg-[#1a0d12] border border-[#ff2a85]/30 text-[#f3d5df]'
-                    : 'bg-[#0b0b0b] border border-[#1a1a1a] text-[#e6e6e6]'
-                }`}
-              >
-                {msg.isError && <AlertTriangle className="w-3.5 h-3.5 text-[#ff5c9d] mb-1" />}
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1 marker:text-[#6b6b6b]">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1 marker:text-[#6b6b6b]">{children}</ol>,
-                    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-                    code: ({ children }) => (
-                      <code className="bg-[#141414] text-[#7df9ff] px-1 py-0.5 rounded font-mono text-[11px] border border-[#1e1e1e]">
-                        {children}
-                      </code>
-                    ),
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
 
                 {msg.expandedNodes && msg.expandedNodes.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-[#1e1e1e] space-y-1.5 select-none">
-                    <div className="text-[10px] text-[#4ade80] font-medium flex items-center gap-1">
-                      <GitBranch className="w-3 h-3" />
+                  <div className="mt-3 rounded-xl vault-sidebar ring-1 ring-black/5 p-2.5 select-none">
+                    <div className="px-1 mb-1.5 text-[12px] text-black/50 flex items-center gap-1.5">
+                      <GitBranch className="w-3.5 h-3.5 text-[#0891b2]" />
                       Added {msg.expandedNodes.length} note{msg.expandedNodes.length === 1 ? '' : 's'} to your graph
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {msg.expandedNodes.map((node) => (
                         <button
                           key={node.id}
@@ -257,12 +285,12 @@ export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = fals
                             selectNode(node.id);
                             setActiveView('graph');
                           }}
-                          className="px-2 py-0.5 rounded-full bg-[#141414] hover:bg-[#1e1e1e] border border-[#262626] hover:border-[#9d4edd] text-[10px] text-white transition flex items-center gap-1 group"
+                          className="px-2.5 py-1 rounded-lg bg-white shadow-[0_1px_2px_rgba(15,10,20,0.08)] text-[12.5px] text-black/80 hover:text-black hover:shadow-[0_1px_4px_rgba(15,10,20,0.14)] transition flex items-center gap-1.5 group"
                           title="Show in graph"
                         >
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: node.color || '#00f5ff' }} />
-                          <span>{node.label}</span>
-                          <ArrowRight className="w-2.5 h-2.5 text-[#6b6b6b] group-hover:text-white" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />
+                          {node.label}
+                          <ArrowRight className="w-3 h-3 text-black/30 group-hover:text-black/60" />
                         </button>
                       ))}
                     </div>
@@ -274,73 +302,73 @@ export const AIChatPlugin: React.FC<{ floating?: boolean }> = ({ floating = fals
         })}
 
         {isChatLoading && (
-          <div className="flex items-center gap-2 text-[11px] text-[#8a8a8a] px-1 select-none" role="status">
-            <span className="flex items-center gap-1" aria-hidden="true">
-              <span className="vault-typing-dot" />
-              <span className="vault-typing-dot" />
-              <span className="vault-typing-dot" />
-            </span>
-            Thinking with {modelDisplayName(activeModel)}…
+          <div className="flex gap-3 vault-fade-in" role="status">
+            <AgentAvatar />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[14px]">
+                <span className="font-semibold">Vault AI</span>
+                <span className="vault-badge">Agent</span>
+              </div>
+              <p className="atlas-shimmer-text text-[14.5px]">{statuses[statusIndex % statuses.length]}</p>
+            </div>
           </div>
         )}
 
-        {/* Suggestions sit under the welcome message until the first question */}
+        {/* Suggestions until the first question, styled like the landing prompt chips */}
         {!hasUserMessages && !isChatLoading && (
-          <div className="space-y-1.5 select-none">
-            <div className="text-[10px] uppercase tracking-wider text-[#6b6b6b] px-0.5">Suggestions</div>
+          <div className="pl-12 space-y-1.5 select-none">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s.label}
                 onClick={() => send(s.prompt)}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#0b0b0b] hover:bg-[#141414] border border-[#1c1c1c] hover:border-[#2c2c2c] text-left text-[12px] text-[#c4c4c4] hover:text-white transition-colors group"
+                className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl ring-1 ring-black/10 hover:ring-black/20 hover:bg-[#faf9ff] text-left text-[14px] text-black/75 hover:text-black transition group"
               >
                 {s.label}
-                <ArrowRight className="w-3 h-3 text-[#6b6b6b] group-hover:text-[#b57aed] flex-shrink-0" />
+                <ArrowRight className="w-3.5 h-3.5 text-black/30 group-hover:text-[#6d55bd] flex-shrink-0" />
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Composer */}
-      <form onSubmit={handleSend} className="p-2.5 border-t border-[#1c1c1c] bg-black space-y-1.5">
+      {/* Composer, like the landing preview */}
+      <form onSubmit={handleSend} className="px-4 pb-4 pt-1 flex-shrink-0">
         {selectedNode && (
-          <div className="flex items-center justify-between gap-2 text-[10px] text-[#8a8a8a] px-1">
+          <div className="flex items-center justify-between gap-2 px-1 pb-2 text-[12px] text-black/45">
             <span className="truncate">
-              Context: <span className="text-[#d4d4d4]">{selectedNode.label}</span>
+              Reading <span className="text-black/75 font-medium">{selectedNode.label}</span>
             </span>
             <button
               type="button"
               onClick={() => send(`Analyze [[${selectedNode.label}]] and propose 2 new connecting notes with explanations.`)}
               disabled={isChatLoading}
-              className="text-[#b57aed] hover:text-white disabled:opacity-40 transition font-medium flex items-center gap-0.5 whitespace-nowrap"
+              className="text-[#6d55bd] font-medium hover:underline disabled:opacity-40 whitespace-nowrap"
             >
-              Expand this note <ArrowRight className="w-2.5 h-2.5" />
+              Expand this note
             </button>
           </div>
         )}
-        <div className="flex items-end gap-1.5 bg-[#0a0a0a] border border-[#222222] focus-within:border-[#9d4edd]/80 rounded-xl pl-3 pr-1.5 py-1.5 transition-colors">
+        <div className="flex items-end gap-2 rounded-xl ring-1 ring-black/10 focus-within:ring-[#6d55bd]/60 focus-within:shadow-[0_0_0_4px_rgba(109,85,189,0.1)] px-3.5 py-2.5 transition">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={selectedNode ? `Ask about ${selectedNode.label}…` : 'Ask anything about your vault…'}
+            placeholder="Ask your vault…"
             rows={1}
-            className="w-full bg-transparent text-white placeholder-[#6b6b6b] outline-none text-[12.5px] leading-5 resize-none py-1"
-            aria-label="Message the AI assistant"
+            className="w-full bg-transparent text-black placeholder-black/40 outline-none text-[14px] leading-6 resize-none"
+            aria-label="Message Vault AI"
           />
           <button
             type="submit"
             disabled={!input.trim() || isChatLoading}
-            className="p-1.5 rounded-lg bg-[#9d4edd] hover:bg-[#8b3bd6] disabled:bg-[#262626] disabled:text-[#6b6b6b] text-white transition-colors flex-shrink-0"
+            className="mb-1 text-black/70 hover:text-black disabled:text-black/25 transition-colors flex-shrink-0"
             title="Send (Enter)"
             aria-label="Send message"
           >
-            <ArrowUp className="w-3.5 h-3.5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
-        <div className="text-[10px] text-[#5f5f5f] px-1">Enter to send · Shift+Enter for a new line</div>
       </form>
     </aside>
   );

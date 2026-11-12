@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { NoteNode, NoteEdge, ColorGroup } from '../../types';
-import { Sliders, X, Search, Plus, Minus, Maximize2, FileText, Sparkles, MousePointerClick } from 'lucide-react';
+import { Sliders, X, Search, FileText, Sparkles } from 'lucide-react';
 
 interface SimNode extends NoteNode {
   x: number;
@@ -31,7 +31,6 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
     isChatLoading,
   } = useWorkspace();
 
-  const [showHint, setShowHint] = useState(true);
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -340,22 +339,22 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
         if (isNeighborEdge) {
           // Highlight active wires with glowing electric violet
-          ctx.strokeStyle = '#9d4edd';
-          ctx.lineWidth = baseEdgeWidth * 2.2;
-          ctx.globalAlpha = 0.95;
-          ctx.shadowColor = '#9d4edd';
-          ctx.shadowBlur = 8;
+          ctx.strokeStyle = '#8b74e0';
+          ctx.lineWidth = baseEdgeWidth * 1.6;
+          ctx.globalAlpha = 1;
+          ctx.shadowColor = '#6d55bd';
+          ctx.shadowBlur = 6;
         } else if (activeId) {
           // Dim unconnected wires
-          ctx.strokeStyle = '#3a3a3a';
-          ctx.lineWidth = baseEdgeWidth * 0.7;
-          ctx.globalAlpha = 0.18;
+          ctx.strokeStyle = '#2a2a30';
+          ctx.lineWidth = baseEdgeWidth * 0.8;
+          ctx.globalAlpha = 0.55;
           ctx.shadowBlur = 0;
         } else {
           // Default sleek thin wires
-          ctx.strokeStyle = '#333333';
+          ctx.strokeStyle = '#34343b';
           ctx.lineWidth = baseEdgeWidth;
-          ctx.globalAlpha = 0.55;
+          ctx.globalAlpha = 1;
           ctx.shadowBlur = 0;
         }
 
@@ -374,57 +373,57 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
         const isConnectedNeighbor = neighborIds.has(node.id);
         const nodeColor = getNodeColor(node);
 
-        const nodeAlpha = activeId ? (isConnectedNeighbor ? 1 : 0.22) : 0.92;
-        ctx.globalAlpha = nodeAlpha;
+        const isFocused = !!activeId && isConnectedNeighbor;
+        const nodeAlpha = activeId ? (isConnectedNeighbor ? 1 : 0.35) : 1;
+        const isAIDiscovery = node.folder === 'AI Discoveries';
 
-        // Selection / Hover pulsing halo ring
+        // Soft lavender focus glow, as in the landing page graph
         if (isSelected || isHovered) {
+          const glowR = node.radius + 14;
+          const g = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, glowR);
+          g.addColorStop(0, 'rgba(167, 139, 250, 0.55)');
+          g.addColorStop(1, 'rgba(167, 139, 250, 0)');
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 8, 0, Math.PI * 2);
-          ctx.fillStyle = nodeColor;
-          ctx.globalAlpha = isSelected ? 0.35 : 0.2;
+          ctx.arc(node.x, node.y, glowR, 0, Math.PI * 2);
           ctx.fill();
+        }
 
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.8;
-          ctx.globalAlpha = 0.9;
+        // Node dot: zinc by default, group colour when focused, lavender when selected
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected
+          ? '#c4b5fd'
+          : isAIDiscovery
+          ? '#67e8f9'
+          : activeId && !isFocused
+          ? '#52525b'
+          : nodeColor;
+        ctx.globalAlpha = nodeAlpha;
+        ctx.fill();
+        if (isSelected) {
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#f4f4f5';
           ctx.stroke();
         }
 
-        // Main Node Circle Dot
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#ffffff' : nodeColor;
-        ctx.globalAlpha = nodeAlpha;
-        ctx.shadowColor = nodeColor;
-        ctx.shadowBlur = isSelected || isHovered ? 14 : 5;
-        ctx.fill();
-
-        ctx.shadowBlur = 0; // Clear shadow
-
-        // Solid White Text Labels
-        // Text fade threshold: labels appear when zoomed in or when hovered/selected
+        // Monospace labels under each node
         const textThreshold = graphSettings.textFadeThreshold;
         const shouldShowLabel =
           isSelected || isHovered || currentScale >= textThreshold || (activeId && isConnectedNeighbor);
 
         if (shouldShowLabel && nodeAlpha > 0.3) {
-          ctx.font = isSelected
-            ? '600 12px Inter, sans-serif'
-            : isHovered
-            ? '600 11px Inter, sans-serif'
-            : '400 10px Inter, sans-serif';
-
-          ctx.fillStyle = isSelected || isHovered ? '#ffffff' : '#e0e0e0';
+          ctx.font = `${isSelected || isHovered ? 600 : 500} ${isSelected ? 11 : 10}px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isSelected || isHovered || isFocused ? '#f4f4f5' : isAIDiscovery ? '#cffafe' : '#8a8a93';
           ctx.globalAlpha = isSelected || isHovered ? 1 : Math.min(1, (currentScale - textThreshold + 0.3) * 1.5);
-
-          // Add subtle dark text stroke for legibility over crossed wires
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 3;
-          ctx.strokeText(node.label, node.x + node.radius + 5, node.y + 3.5);
-          ctx.fillText(node.label, node.x + node.radius + 5, node.y + 3.5);
+          const ly = node.y + node.radius + 12;
+          ctx.strokeText(node.label, node.x, ly);
+          ctx.fillText(node.label, node.x, ly);
+          ctx.textAlign = 'start';
         }
       }
 
@@ -515,16 +514,6 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
     cameraRef.current.target = { x, y, scale: Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)) };
   };
 
-  /** Zoom around the view center by a factor. */
-  const zoomBy = (factor: number) => {
-    userMovedCameraRef.current = true;
-    const cam = cameraRef.current;
-    const base = cam.target ?? { x: cam.x, y: cam.y, scale: cam.scale };
-    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, base.scale * factor));
-    const k = scale / base.scale;
-    animateCamera(base.x * k, base.y * k, scale);
-  };
-
   /** Frame every visible node in the viewport. */
   const fitView = useCallback(() => {
     const simNodes = simNodesRef.current;
@@ -589,7 +578,6 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
-    setShowHint(false);
     userMovedCameraRef.current = true;
     cameraRef.current.target = null;
     pointerDownRef.current = { x: e.clientX, y: e.clientY };
@@ -675,8 +663,7 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      setShowHint(false);
-      userMovedCameraRef.current = true;
+        userMovedCameraRef.current = true;
       const camera = cameraRef.current;
       camera.target = null;
       // Trackpads send small deltas; scale the zoom with the delta for smoothness
@@ -732,10 +719,8 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
           onClick={() => setIsSettingsOpen(!isSettingsOpen)}
           aria-label="Graph settings"
           aria-expanded={isSettingsOpen}
-          className={`p-2 rounded-xl border backdrop-blur-md transition shadow-2xl ${
-            isSettingsOpen
-              ? 'bg-[#9d4edd]/25 text-[#9d4edd] border-[#9d4edd]/50'
-              : 'bg-[#0a0a0a]/90 text-[#a0a0a0] border-[#1e1e1e] hover:text-white hover:border-[#333333]'
+          className={`vault-graph-surface p-2 rounded-full transition-colors ${
+            isSettingsOpen ? '!bg-white text-black' : 'text-white/60 hover:text-white'
           }`}
           title="Graph Settings (Filters, Groups, Display, Forces)"
         >
@@ -744,30 +729,30 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
         {/* Complete Graph Settings Drawer (Filters, Groups, Display, Forces) */}
         {isSettingsOpen && (
-          <div className="absolute right-0 top-11 w-72 sm:w-80 bg-[#0a0a0a]/95 backdrop-blur-xl border border-[#222222] rounded-2xl p-4 shadow-2xl text-xs space-y-4 animate-in fade-in duration-150 text-white z-50">
+          <div className="vault-graph-surface absolute right-0 top-11 w-72 sm:w-80 rounded-2xl p-4 text-[12px] space-y-4 vault-pop-in text-white z-50">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#1e1e1e] pb-2">
-              <span className="font-bold text-xs uppercase tracking-wider text-white">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[14px] tracking-[-0.01em] text-white">
                 Graph Settings
               </span>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="text-[#666666] hover:text-white p-1 rounded transition"
+                className="text-white/40 hover:text-white p-1 rounded transition"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Category Tab Bar (Filters, Groups, Display, Forces) */}
-            <div className="flex items-center bg-[#121212] border border-[#1e1e1e] rounded-xl p-0.5 text-[11px] font-medium">
+            <div className="flex items-center bg-white/[0.06] rounded-full p-0.5 text-[12px] font-medium">
               {(['forces', 'display', 'groups', 'filters'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTabSetting(tab)}
-                  className={`flex-1 py-1 rounded-lg capitalize transition text-center ${
+                  className={`flex-1 py-1 rounded-full capitalize transition text-center ${
                     activeTabSetting === tab
-                      ? 'bg-[#1e1e1e] text-[#00f5ff] font-semibold shadow-xs'
-                      : 'text-[#888888] hover:text-white'
+                      ? 'bg-white text-black'
+                      : 'text-white/55 hover:text-white'
                   }`}
                 >
                   {tab}
@@ -777,11 +762,11 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
             {/* TAB 1: FORCES (Physics Engine) */}
             {activeTabSetting === 'forces' && (
-              <div className="space-y-3.5 animate-in fade-in duration-100">
+              <div className="space-y-3.5 ">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Center Force</span>
-                    <span className="font-mono text-[#00f5ff]">{graphSettings.centerForce.toFixed(2)}</span>
+                    <span className="text-white/60">Center force</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.centerForce.toFixed(2)}</span>
                   </div>
                   <input
                     type="range"
@@ -790,14 +775,14 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="0.05"
                     value={graphSettings.centerForce}
                     onChange={(e) => setGraphSettings({ centerForce: parseFloat(e.target.value) })}
-                    className="w-full accent-[#00f5ff] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Repel Force</span>
-                    <span className="font-mono text-[#00f5ff]">{graphSettings.repelForce}</span>
+                    <span className="text-white/60">Repel force</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.repelForce}</span>
                   </div>
                   <input
                     type="range"
@@ -806,14 +791,14 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="50"
                     value={graphSettings.repelForce}
                     onChange={(e) => setGraphSettings({ repelForce: parseInt(e.target.value) })}
-                    className="w-full accent-[#00f5ff] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Link Force</span>
-                    <span className="font-mono text-[#00f5ff]">{graphSettings.linkForce.toFixed(2)}</span>
+                    <span className="text-white/60">Link force</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.linkForce.toFixed(2)}</span>
                   </div>
                   <input
                     type="range"
@@ -822,14 +807,14 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="0.1"
                     value={graphSettings.linkForce}
                     onChange={(e) => setGraphSettings({ linkForce: parseFloat(e.target.value) })}
-                    className="w-full accent-[#00f5ff] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Link Distance</span>
-                    <span className="font-mono text-[#00f5ff]">{graphSettings.linkDistance}px</span>
+                    <span className="text-white/60">Link distance</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.linkDistance}px</span>
                   </div>
                   <input
                     type="range"
@@ -838,7 +823,7 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="10"
                     value={graphSettings.linkDistance}
                     onChange={(e) => setGraphSettings({ linkDistance: parseInt(e.target.value) })}
-                    className="w-full accent-[#00f5ff] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
               </div>
@@ -846,11 +831,11 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
             {/* TAB 2: DISPLAY */}
             {activeTabSetting === 'display' && (
-              <div className="space-y-3.5 animate-in fade-in duration-100">
+              <div className="space-y-3.5 ">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Node Size Multiplier</span>
-                    <span className="font-mono text-[#9d4edd]">{graphSettings.nodeSizeMultiplier.toFixed(1)}x</span>
+                    <span className="text-white/60">Node size</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.nodeSizeMultiplier.toFixed(1)}x</span>
                   </div>
                   <input
                     type="range"
@@ -859,14 +844,14 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="0.1"
                     value={graphSettings.nodeSizeMultiplier}
                     onChange={(e) => setGraphSettings({ nodeSizeMultiplier: parseFloat(e.target.value) })}
-                    className="w-full accent-[#9d4edd] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Link Wire Thickness</span>
-                    <span className="font-mono text-[#9d4edd]">{graphSettings.linkThickness.toFixed(1)}px</span>
+                    <span className="text-white/60">Link thickness</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.linkThickness.toFixed(1)}px</span>
                   </div>
                   <input
                     type="range"
@@ -875,14 +860,14 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="0.2"
                     value={graphSettings.linkThickness}
                     onChange={(e) => setGraphSettings({ linkThickness: parseFloat(e.target.value) })}
-                    className="w-full accent-[#9d4edd] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#a0a0a0]">Text Fade Threshold</span>
-                    <span className="font-mono text-[#9d4edd]">{graphSettings.textFadeThreshold.toFixed(2)}</span>
+                    <span className="text-white/60">Label fade</span>
+                    <span className="font-mono text-[#c4b5fd]">{graphSettings.textFadeThreshold.toFixed(2)}</span>
                   </div>
                   <input
                     type="range"
@@ -891,7 +876,7 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                     step="0.05"
                     value={graphSettings.textFadeThreshold}
                     onChange={(e) => setGraphSettings({ textFadeThreshold: parseFloat(e.target.value) })}
-                    className="w-full accent-[#9d4edd] h-1 bg-[#1a1a1a] rounded cursor-pointer"
+                    className="w-full accent-[#c4b5fd] h-1 bg-white/10 rounded cursor-pointer"
                   />
                 </div>
 
@@ -900,20 +885,20 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
             {/* TAB 3: GROUPS */}
             {activeTabSetting === 'groups' && (
-              <div className="space-y-2.5 animate-in fade-in duration-100">
-                <div className="text-[11px] text-[#a0a0a0] mb-1">
-                  Color groups by folder or tag query:
+              <div className="space-y-2.5 ">
+                <div className="text-[11px] text-white/60 mb-1">
+                  Colors by folder or tag
                 </div>
                 {graphSettings.groups.map((grp) => (
                   <div
                     key={grp.id}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[#121212] border border-[#1e1e1e] text-xs"
+                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.05] text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: grp.color }} />
                       <span className="font-medium text-white">{grp.query}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-[#666666]">{grp.color}</span>
+                    <span className="text-[10px] font-mono text-white/40">{grp.color}</span>
                   </div>
                 ))}
               </div>
@@ -921,30 +906,30 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
 
             {/* TAB 4: FILTERS */}
             {activeTabSetting === 'filters' && (
-              <div className="space-y-3 animate-in fade-in duration-100">
+              <div className="space-y-3 ">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-[#a0a0a0] uppercase font-semibold">
-                    Search Vault Nodes
+                  <label className="text-[12px] text-white/60">
+                    Filter notes
                   </label>
-                  <div className="flex items-center gap-1.5 bg-[#121212] border border-[#1e1e1e] rounded-xl px-2.5 py-1.5">
-                    <Search className="w-3.5 h-3.5 text-[#666666]" />
+                  <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-xl px-2.5 py-1.5">
+                    <Search className="w-3.5 h-3.5 text-white/40" />
                     <input
                       type="text"
                       placeholder="Filter title or folder..."
                       value={graphSettings.searchQuery}
                       onChange={(e) => setGraphSettings({ searchQuery: e.target.value })}
-                      className="bg-transparent text-white placeholder-[#555555] outline-none w-full text-xs"
+                      className="bg-transparent text-white placeholder-white/35 outline-none w-full text-xs"
                     />
                   </div>
                 </div>
 
-                <label className="flex items-center justify-between p-2 rounded-xl bg-[#121212] border border-[#1e1e1e] cursor-pointer hover:bg-[#181818] transition">
-                  <span className="text-xs text-[#d0d0d0]">Show Orphan Notes</span>
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white/[0.05] cursor-pointer hover:bg-white/10 transition">
+                  <span className="text-xs text-white/80">Show unlinked notes</span>
                   <input
                     type="checkbox"
                     checked={graphSettings.showOrphans}
                     onChange={(e) => setGraphSettings({ showOrphans: e.target.checked })}
-                    className="accent-[#00f5ff] rounded cursor-pointer"
+                    className="accent-[#c4b5fd] rounded cursor-pointer"
                   />
                 </label>
               </div>
@@ -966,96 +951,70 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
         aria-label={`Knowledge graph with ${visibleCount} notes. Use the file list or search to open notes.`}
       />
 
-      {/* Top-left: active filter / color legend */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none">
+      {/* Top-left: label and active filter */}
+      <div className="absolute top-3.5 left-4 z-10 flex flex-col gap-2.5 pointer-events-none">
+        <div className="text-[11px] font-mono text-white/40 tracking-wide">
+          graph · {visibleCount} notes
+        </div>
         {isFiltered && (
-          <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-[#262626] bg-[#0a0a0a]/90 backdrop-blur px-2.5 py-1.5 text-[11px] text-[#c4c4c4]">
-            <Search className="w-3 h-3 text-[#8a8a8a]" />
+          <div className="vault-graph-surface pointer-events-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] text-white/75">
+            <Search className="w-3 h-3 text-white/45" />
             Showing {visibleCount} of {nodes.length} notes
             <button
               onClick={() => setGraphSettings({ searchQuery: '', showOrphans: true })}
-              className="text-[#b57aed] hover:text-white"
+              className="text-[#c4b5fd] font-medium hover:text-white"
             >
               Clear
             </button>
           </div>
         )}
-        {!compact && (
-          <div className="hidden md:flex flex-col gap-1 rounded-lg border border-[#1c1c1c] bg-[#050505]/80 backdrop-blur px-2.5 py-2">
-            {graphSettings.groups.map((g) => (
-              <div key={g.id} className="flex items-center gap-2 text-[10px] text-[#a3a3a3]">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.color }} />
-                {g.query}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Bottom-right: zoom controls */}
-      <div className="absolute bottom-3 right-3 z-10 flex flex-col rounded-lg border border-[#222222] bg-[#0a0a0a]/90 backdrop-blur overflow-hidden">
-        {[
-          { label: 'Zoom in', icon: Plus, onClick: () => zoomBy(1.3) },
-          { label: 'Zoom out', icon: Minus, onClick: () => zoomBy(1 / 1.3) },
-          { label: 'Fit graph to view', icon: Maximize2, onClick: fitView },
-        ].map(({ label, icon: Icon, onClick }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            className="p-2 text-[#a3a3a3] hover:text-white hover:bg-[#181818] transition-colors border-b border-[#1c1c1c] last:border-b-0"
-            title={label}
-            aria-label={label}
-          >
-            <Icon className="w-3.5 h-3.5" />
-          </button>
-        ))}
-      </div>
-
-      {/* Bottom-left: selected note card, or a first-run hint */}
+      {/* Bottom-left: selected note card */}
       {selectedNode ? (
         <div
           key={selectedNode.id}
-          className="absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-72px))] rounded-xl border border-[#262626] bg-[#0a0a0a]/95 backdrop-blur p-3 shadow-2xl vault-pop-in"
+          className="vault-graph-surface absolute bottom-4 left-4 z-10 w-[min(300px,calc(100%-80px))] rounded-2xl p-4 vault-pop-in"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-[#7c7c7c] truncate">{selectedNode.folder}</div>
-              <div className="text-sm font-semibold text-white truncate">{selectedNode.label}</div>
+              <div className="text-[11px] font-mono text-white/40 truncate">{selectedNode.folder}</div>
+              <div className="text-[16px] font-semibold tracking-[-0.01em] text-white truncate">{selectedNode.label}</div>
             </div>
             <button
               onClick={() => selectNode(null)}
-              className="p-1 -m-1 rounded text-[#7c7c7c] hover:text-white"
+              className="p-1 -m-1 rounded-full text-white/40 hover:text-white"
               aria-label="Clear selection"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="mt-1.5 text-[11px] text-[#8a8a8a]">
+          <div className="mt-1 text-[12px] text-white/50">
             {selectedLinks.length === 0
               ? 'No connections yet'
               : `${selectedLinks.length} connection${selectedLinks.length === 1 ? '' : 's'}`}
           </div>
           {selectedLinks.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
+            <div className="mt-2.5 flex flex-wrap gap-1">
               {selectedLinks.slice(0, 4).map((n) => (
                 <button
                   key={n.id}
                   onClick={() => selectNode(n.id)}
-                  className="max-w-[130px] truncate rounded-full border border-[#262626] bg-[#121212] px-2 py-0.5 text-[10px] text-[#c4c4c4] hover:border-[#9d4edd]/60 hover:text-white transition-colors"
+                  className="max-w-[130px] truncate rounded-md bg-white/[0.07] px-2 py-0.5 text-[11px] font-mono text-white/70 hover:bg-white/15 hover:text-white transition-colors"
                 >
                   {n.label}
                 </button>
               ))}
               {selectedLinks.length > 4 && (
-                <span className="px-1 py-0.5 text-[10px] text-[#7c7c7c]">+{selectedLinks.length - 4}</span>
+                <span className="px-1 py-0.5 text-[11px] text-white/40">+{selectedLinks.length - 4}</span>
               )}
             </div>
           )}
-          <div className="mt-3 flex gap-1.5">
+          <div className="mt-4 flex gap-2">
             {!compact && (
               <button
                 onClick={() => openNote(selectedNode.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-md bg-[#9d4edd] hover:bg-[#8b3bd6] px-2 py-1.5 text-[11px] font-medium text-white transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 px-3 py-1.5 text-[13px] font-medium text-black transition-colors"
               >
                 <FileText className="w-3.5 h-3.5" />
                 Open note
@@ -1068,26 +1027,19 @@ export const GraphCanvas: React.FC<{ compact?: boolean }> = ({ compact = false }
                 )
               }
               disabled={isChatLoading}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-md border border-[#9d4edd]/40 bg-[#141414] hover:bg-[#1c1c1c] px-2 py-1.5 text-[11px] font-medium text-[#c9a4f2] hover:text-white disabled:opacity-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-50 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Expand with AI
+              Expand
             </button>
           </div>
         </div>
-      ) : (
-        showHint && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 hidden sm:flex items-center gap-2 rounded-full border border-[#222222] bg-[#0a0a0a]/90 backdrop-blur px-3 py-1.5 text-[11px] text-[#a3a3a3] vault-fade-in">
-            <MousePointerClick className="w-3.5 h-3.5 text-[#b57aed]" />
-            Click a node to select · double-click to open · scroll to zoom · drag to pan
-          </div>
-        )
-      )}
+      ) : null}
 
       {/* Empty state */}
       {visibleCount === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center text-[#8a8a8a] text-xs">
+          <div className="text-center text-white/45 text-[13px] font-mono">
             {nodes.length === 0 ? 'No notes yet. Create one to start your graph.' : 'No notes match the current filter.'}
           </div>
         </div>

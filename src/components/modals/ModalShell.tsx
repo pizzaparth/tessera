@@ -53,7 +53,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex justify-center p-4 bg-black/75 backdrop-blur-sm vault-fade-in select-none ${
+      className={`fixed inset-0 z-50 flex justify-center p-4 bg-[#0f0a1e]/20 backdrop-blur-[2px] vault-fade-in select-none ${
         align === 'top' ? 'items-start pt-[12vh]' : 'items-center'
       }`}
       onMouseDown={(e) => {
@@ -66,7 +66,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={`w-full ${widthClass} bg-[#0a0a0a] border border-[#262626] rounded-2xl shadow-[0_24px_80px_-12px_rgba(0,0,0,0.9)] text-white outline-none vault-pop-in ${className}`}
+        className={`w-full ${widthClass} bg-white rounded-[20px] ring-1 ring-black/5 shadow-[0_20px_60px_-20px_rgba(20,10,50,0.45)] text-black outline-none vault-pop-in ${className}`}
       >
         {children}
       </div>

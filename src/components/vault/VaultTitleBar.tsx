@@ -1,15 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { GitBranch, FileText, Columns, Sparkles, Plus, RotateCcw, Layers, ArrowLeft, Search } from 'lucide-react';
+import { Network, FileText, Columns2, Sparkles, RotateCcw, ArrowLeft, Search, PanelLeft } from 'lucide-react';
 import { MOD } from './shortcuts';
 
-const tabClass = (active: boolean) =>
-  `flex items-center gap-1.5 px-3 h-8 text-xs whitespace-nowrap transition-colors border-b-2 font-medium ${
-    active
-      ? 'bg-[#121212] text-white border-[#9d4edd]'
-      : 'text-[#949494] hover:text-white hover:bg-[#0f0f0f] border-transparent'
-  }`;
+type View = 'graph' | 'note' | 'split';
 
 export const VaultTitleBar: React.FC = () => {
   const {
@@ -18,115 +14,110 @@ export const VaultTitleBar: React.FC = () => {
     selectedNode,
     isAIOpen,
     toggleAI,
-    openCreateNoteModal,
+    isSidebarOpen,
+    toggleSidebar,
     openResetVaultModal,
     openQuickSwitcher,
   } = useWorkspace();
 
-  return (
-    <header className="h-9 bg-black border-b border-[#1c1c1c] flex items-center justify-between gap-2 px-3 select-none flex-shrink-0 z-40 text-xs">
-      {/* Left: window dots, exit, vault name */}
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <div className="hidden sm:flex items-center gap-1.5 mr-1" aria-hidden="true">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e]" />
-          <div className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123]" />
-          <div className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29]" />
-        </div>
+  const views: { id: View; label: string; icon: typeof Network; shortcut: string; wideOnly?: boolean }[] = [
+    { id: 'graph', label: 'Graph', icon: Network, shortcut: `${MOD} G` },
+    { id: 'note', label: selectedNode ? selectedNode.label : 'Note', icon: FileText, shortcut: `${MOD} E` },
+    { id: 'split', label: 'Split', icon: Columns2, shortcut: `${MOD} Shift S`, wideOnly: true },
+  ];
 
+  return (
+    <header className="vault-chrome h-12 border-b border-black/5 flex items-center justify-between gap-3 px-3 sm:px-4 flex-shrink-0 z-40">
+      {/* Left: window dots, sidebar toggle, back to site */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div className="hidden sm:flex items-center gap-2 mr-1" aria-hidden="true">
+          <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+          <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
+          <span className="w-3 h-3 rounded-full bg-[#28c840]" />
+        </div>
+        <button
+          onClick={toggleSidebar}
+          className={`p-1.5 rounded-lg transition-colors ${
+            isSidebarOpen ? 'text-black bg-white/70' : 'text-black/50 hover:text-black hover:bg-white/60'
+          }`}
+          title={`${isSidebarOpen ? 'Hide' : 'Show'} sidebar (${MOD} B)`}
+          aria-label="Toggle sidebar"
+          aria-pressed={isSidebarOpen}
+        >
+          <PanelLeft className="w-4 h-4" />
+        </button>
         <Link
           to="/"
-          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-[#949494] hover:text-white hover:bg-[#181818] transition border border-[#222222]"
-          title="Exit demo and return to website"
+          className="hidden md:flex items-center gap-1 text-[13px] text-black/55 hover:text-black transition-colors"
+          title="Back to the website"
         >
-          <ArrowLeft className="w-3 h-3" />
-          <span className="hidden sm:inline">Website</span>
+          <ArrowLeft className="w-3.5 h-3.5" /> Website
         </Link>
-
-        <div className="hidden md:flex items-center gap-1.5 text-white">
-          <Layers className="w-3.5 h-3.5 text-[#9d4edd]" />
-          <span className="text-[11px] font-semibold">Brain Vault</span>
-        </div>
       </div>
 
-      {/* Middle: tabs */}
-      <nav className="flex items-center gap-0.5 flex-1 min-w-0 max-w-xl overflow-x-auto no-scrollbar" aria-label="Open views">
-        <button
-          onClick={() => setActiveView('graph')}
-          className={tabClass(activeView === 'graph')}
-          aria-current={activeView === 'graph' ? 'page' : undefined}
-          title={`Graph view (${MOD} G)`}
-        >
-          <GitBranch className="w-3.5 h-3.5 text-[#9d4edd]" />
-          <span>Graph</span>
-        </button>
-
-        {selectedNode && (
-          <button
-            onClick={() => setActiveView('note')}
-            className={`${tabClass(activeView === 'note')} min-w-0 max-w-[220px]`}
-            aria-current={activeView === 'note' ? 'page' : undefined}
-            title={selectedNode.label}
-          >
-            <FileText className="w-3.5 h-3.5 text-[#949494] flex-shrink-0" />
-            <span className="truncate">{selectedNode.label}</span>
-          </button>
-        )}
-
-        <button
-          onClick={openCreateNoteModal}
-          className="p-1.5 ml-0.5 rounded text-[#949494] hover:text-white hover:bg-[#181818] transition flex-shrink-0"
-          title={`New note (${MOD} Shift N)`}
-          aria-label="New note"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
+      {/* Center: view switcher, styled like the landing page prompt chips */}
+      <nav
+        className="flex items-center gap-0.5 rounded-full p-1 bg-white/55 ring-1 ring-black/5 min-w-0"
+        aria-label="View"
+        role="tablist"
+      >
+        {views.map(({ id, label, icon: Icon, shortcut, wideOnly }) => {
+          const active = activeView === id;
+          return (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveView(id)}
+              className={`relative flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-medium tracking-[-0.01em] transition-colors min-w-0 ${
+                active ? 'text-black' : 'text-black/55 hover:text-black'
+              } ${wideOnly ? 'hidden lg:flex' : ''} ${id === 'note' ? 'max-w-[220px]' : ''}`}
+              title={`${id === 'note' ? 'Note' : label} (${shortcut})`}
+            >
+              {active && (
+                <motion.span
+                  layoutId="vault-view-chip"
+                  className="absolute inset-0 rounded-full bg-white shadow-[0_1px_3px_rgba(15,10,20,0.15)]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                />
+              )}
+              <span className="relative flex items-center gap-1.5 min-w-0">
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{label}</span>
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Right: search, layout, AI */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      {/* Right: search, reset, AI */}
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         <button
           onClick={openQuickSwitcher}
-          className="flex items-center gap-2 h-6 pl-2 pr-1 rounded-md border border-[#222222] bg-[#0a0a0a] text-[#8a8a8a] hover:text-white hover:border-[#333333] transition"
+          className="flex items-center gap-2 h-8 pl-2.5 pr-1.5 rounded-full bg-white/70 ring-1 ring-black/5 text-black/50 hover:text-black hover:bg-white transition-colors"
           title={`Search notes (${MOD} K)`}
+          aria-label="Search notes"
         >
           <Search className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline text-[11px] pr-4">Search notes</span>
+          <span className="hidden xl:inline text-[13px] pr-6">Search notes</span>
           <kbd className="vault-kbd hidden sm:inline-flex">{MOD} K</kbd>
         </button>
-
-        <button
-          onClick={() => setActiveView(activeView === 'split' ? 'graph' : 'split')}
-          className={`hidden lg:flex px-2 py-1 rounded items-center gap-1 transition text-xs font-medium ${
-            activeView === 'split' ? 'bg-[#181818] text-[#b57aed]' : 'text-[#949494] hover:text-white hover:bg-[#121212]'
-          }`}
-          title={`Split view: graph + note (${MOD} Shift S)`}
-          aria-pressed={activeView === 'split'}
-        >
-          <Columns className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline text-[11px]">Split</span>
-        </button>
-
         <button
           onClick={openResetVaultModal}
-          className="p-1.5 text-[#949494] hover:text-white hover:bg-[#121212] rounded transition"
-          title="Reset vault to default"
+          className="p-2 rounded-full text-black/45 hover:text-black hover:bg-white/60 transition-colors"
+          title="Reset vault to the sample notes"
           aria-label="Reset vault"
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
-
         <button
           onClick={toggleAI}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition ${
-            isAIOpen
-              ? 'bg-[#181818] border-[#9d4edd]/50 text-white shadow-[0_0_12px_rgba(157,78,221,0.25)]'
-              : 'bg-[#0a0a0a] border-[#1e1e1e] text-[#949494] hover:text-white hover:border-[#333333]'
-          }`}
-          title={`AI assistant (${MOD} J)`}
+          className={`atlas-pill atlas-pill-sm ${isAIOpen ? '' : '!bg-white !text-black ring-1 ring-black/10 hover:!bg-[#f6f5f9]'}`}
+          title={`Vault AI (${MOD} J)`}
           aria-pressed={isAIOpen}
         >
-          <Sparkles className="w-3.5 h-3.5 text-[#b57aed]" />
-          <span className="hidden sm:inline">AI Assistant</span>
+          <Sparkles className="w-4 h-4" />
+          <span className="hidden sm:inline">Vault AI</span>
         </button>
       </div>
     </header>

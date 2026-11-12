@@ -216,18 +216,65 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ---------------- Brain Vault workspace ---------------- */
+/* ---------------- Brain Vault workspace (matches landing page) ---------------- */
 
 .vault-root {
-  color-scheme: dark;
+  color-scheme: light;
+  background: #ffffff;
+  color: #000000;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.005em;
 }
 
-/* Visible keyboard focus for controls (inputs use their own border focus) */
-.vault-root :is(button, a, select, [role='option'], [tabindex]:not([tabindex='-1'])):focus-visible {
-  outline: 2px solid rgba(181, 122, 237, 0.9);
-  outline-offset: 1px;
-  border-radius: 6px;
+/* Window chrome + sidebar gradients from the landing preview */
+.vault-chrome {
+  background: linear-gradient(90deg, #eef0ff 0%, #f6f2ff 50%, #fdf0f6 100%);
 }
+.vault-sidebar {
+  background: linear-gradient(180deg, #f7f5ff 0%, #fff5f8 100%);
+}
+
+/* Visible keyboard focus for controls (inputs use their own ring) */
+.vault-root :is(button, a, select, [role='option'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid #6d55bd;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Inputs */
+.vault-input {
+  width: 100%;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: 9px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #000;
+  outline: none;
+  transition: box-shadow 0.15s;
+}
+.vault-input::placeholder { color: rgba(0, 0, 0, 0.4); }
+.vault-input:focus { box-shadow: inset 0 0 0 1.5px #6d55bd, 0 0 0 4px rgba(109, 85, 189, 0.12); }
+
+/* Secondary pill (outline) to pair with .atlas-pill */
+.vault-pill-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  transition: background-color 0.15s, color 0.15s;
+}
+.vault-pill-ghost:hover { background: #f6f5f9; color: #000; }
+.vault-pill-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .vault-kbd {
   display: inline-flex;
@@ -236,79 +283,98 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 4px;
-  border: 1px solid #2c2c2c;
-  border-bottom-width: 2px;
-  background: #121212;
-  color: #a8a8a8;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.55);
   font-family: 'Inter', -apple-system, sans-serif;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* Small uppercase badge, like "AGENT" on the landing page */
+.vault-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.55);
+  padding: 1px 4px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* Dark floating surfaces on the black graph panel */
+.vault-graph-surface {
+  background: rgba(17, 17, 19, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 32px -12px rgba(0, 0, 0, 0.8);
 }
 
 @keyframes vault-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes vault-pop-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 @keyframes vault-slide-in-right {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
-@keyframes vault-typing {
-  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
-  40% { opacity: 1; transform: translateY(-2px); }
+@keyframes vault-slide-in-left {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.vault-fade-in { animation: vault-fade-in 140ms ease-out; }
-.vault-pop-in { animation: vault-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-.vault-slide-in-right { animation: vault-slide-in-right 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vault-fade-in { animation: vault-fade-in 160ms ease-out; }
+.vault-pop-in { animation: vault-pop-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.vault-slide-in-right { animation: vault-slide-in-right 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.vault-slide-in-left { animation: vault-slide-in-left 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
 
-.vault-typing-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 9999px;
-  background: #b57aed;
-  animation: vault-typing 1.2s ease-in-out infinite;
+/* Rendered markdown links */
+.vault-root .internal-link {
+  color: #6d55bd;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.15s;
 }
-.vault-typing-dot:nth-child(2) { animation-delay: 0.15s; }
-.vault-typing-dot:nth-child(3) { animation-delay: 0.3s; }
-
-/* Wikilink pointing at a note that does not exist yet */
-.internal-link.is-unresolved {
-  color: #8a8a8a;
-  text-decoration-style: dashed;
-}
-.internal-link.is-unresolved:hover {
-  color: #c084fc;
+.vault-root .internal-link:hover {
+  background: rgba(109, 85, 189, 0.1);
   text-shadow: none;
 }
+.vault-root .internal-link.is-unresolved {
+  color: rgba(0, 0, 0, 0.45);
+  text-decoration: underline dashed rgba(0, 0, 0, 0.3);
+  text-underline-offset: 3px;
+}
+.vault-root .internal-link.is-unresolved:hover {
+  color: #6d55bd;
+}
 
+/* Tag chip, like "Long notes" chips on the landing page */
 .vault-tag {
   display: inline-block;
-  padding: 0 6px;
+  padding: 0 7px;
   margin: 0 1px;
-  border-radius: 9999px;
-  background: rgba(157, 78, 221, 0.12);
-  border: 1px solid rgba(157, 78, 221, 0.25);
-  color: #c9a4f2;
-  font-size: 0.85em;
-  line-height: 1.6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.7);
+  font-size: 0.82em;
+  line-height: 1.75;
   text-decoration: none;
 }
 
-/* Horizontal chip rows that can scroll without a visible scrollbar */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .vault-fade-in, .vault-pop-in, .vault-slide-in-right, .vault-typing-dot { animation: none; }
+  .vault-fade-in, .vault-pop-in, .vault-slide-in-right, .vault-slide-in-left { animation: none; }
 }

@@ -8,8 +8,7 @@ import {
   Eye,
   Columns,
   Sparkles,
-  Link as LinkIcon,
-  Folder,
+  Hash,
   ArrowRight,
   ArrowLeft,
   Search,
@@ -177,24 +176,18 @@ export const VaultNoteEditor: React.FC = () => {
 
   if (!selectedNode) {
     return (
-      <div ref={rootRef} className="h-full flex flex-col items-center justify-center p-8 text-center bg-black select-none">
-        <FileText className="w-10 h-10 mb-3 stroke-1 text-[#4a4a4a]" />
-        <h3 className="text-sm font-semibold text-white">No note open</h3>
-        <p className="text-xs text-[#8a8a8a] mt-1 max-w-xs">
-          Pick a note from the file list, click a node in the graph, or start something new.
+      <div ref={rootRef} className="h-full flex flex-col items-center justify-center p-8 text-center bg-white select-none">
+        <FileText className="w-9 h-9 mb-4 stroke-[1.5] text-black/25" />
+        <h3 className="atlas-display text-[22px] text-black">No note open</h3>
+        <p className="text-[15px] text-black/55 mt-1.5 max-w-xs leading-[1.45]">
+          Pick a note from the sidebar, click a node in the graph, or start something new.
         </p>
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={openQuickSwitcher}
-            className="flex items-center gap-1.5 rounded-md border border-[#262626] bg-[#0f0f0f] px-3 py-1.5 text-xs text-white hover:bg-[#181818]"
-          >
-            <Search className="w-3.5 h-3.5" /> Search notes <kbd className="vault-kbd ml-1">{MOD} K</kbd>
+        <div className="mt-6 flex gap-2">
+          <button onClick={openQuickSwitcher} className="vault-pill-ghost">
+            <Search className="w-4 h-4" /> Search <kbd className="vault-kbd ml-1">{MOD} K</kbd>
           </button>
-          <button
-            onClick={openCreateNoteModal}
-            className="flex items-center gap-1.5 rounded-md bg-[#9d4edd] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#8b3bd6]"
-          >
-            <Plus className="w-3.5 h-3.5" /> New note
+          <button onClick={openCreateNoteModal} className="atlas-pill atlas-pill-sm">
+            <Plus className="w-4 h-4" /> New note
           </button>
         </div>
       </div>
@@ -249,34 +242,30 @@ export const VaultNoteEditor: React.FC = () => {
         return <span className="vault-tag">{children}</span>;
       }
       return (
-        <a href={href} target="_blank" rel="noreferrer" className="text-[#b57aed] underline underline-offset-2 hover:text-white">
+        <a href={href} target="_blank" rel="noreferrer" className="text-[#6d55bd] font-medium underline underline-offset-2">
           {children}
         </a>
       );
     },
-    p: ({ children }) => <p className="mb-3">{children}</p>,
-    ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1 marker:text-[#6b6b6b]">{children}</ul>,
-    ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1 marker:text-[#6b6b6b]">{children}</ol>,
+    p: ({ children }) => <p className="mb-4">{children}</p>,
+    ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1.5 marker:text-black/30">{children}</ul>,
+    ol: ({ children }) => <ol className="list-decimal pl-5 mb-4 space-y-1.5 marker:text-black/40">{children}</ol>,
     blockquote: ({ children }) => (
-      <blockquote className="border-l-2 border-[#9d4edd]/60 pl-3 my-3 text-[#b0b0b0]">{children}</blockquote>
+      <blockquote className="border-l-2 border-[#6d55bd]/50 pl-4 my-4 text-black/60">{children}</blockquote>
     ),
-    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-    h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-6 mb-2">{children}</h1>,
-    h2: ({ children }) => (
-      <h2 className="text-base font-semibold text-white mt-6 mb-2 pb-1 border-b border-[#1c1c1c]">{children}</h2>
-    ),
-    h3: ({ children }) => <h3 className="text-sm font-semibold text-white mt-4 mb-1">{children}</h3>,
-    hr: () => <hr className="my-6 border-[#1c1c1c]" />,
+    strong: ({ children }) => <strong className="font-semibold text-black">{children}</strong>,
+    h1: ({ children }) => <h1 className="atlas-display text-[24px] text-black mt-8 mb-3">{children}</h1>,
+    h2: ({ children }) => <h2 className="atlas-display text-[20px] text-black mt-8 mb-2.5">{children}</h2>,
+    h3: ({ children }) => <h3 className="text-[16px] font-semibold text-black mt-6 mb-2">{children}</h3>,
+    hr: () => <hr className="my-8 border-black/5" />,
     code: ({ className, children }) => {
       const isBlock = /language-/.test(className || '') || String(children).includes('\n');
       return isBlock ? (
-        <pre className="bg-[#0a0a0a] text-white p-3 rounded-lg border border-[#1c1c1c] font-mono text-xs overflow-x-auto my-3">
+        <pre className="bg-[#f7f5ff] text-black/85 p-4 rounded-xl ring-1 ring-black/5 font-mono text-[13px] overflow-x-auto my-4">
           <code>{children}</code>
         </pre>
       ) : (
-        <code className="bg-[#141414] text-[#7df9ff] px-1.5 py-0.5 rounded font-mono text-[0.85em] border border-[#1e1e1e]">
-          {children}
-        </code>
+        <code className="bg-black/5 text-black/80 px-1.5 py-0.5 rounded-md font-mono text-[0.85em]">{children}</code>
       );
     },
     pre: ({ children }) => <>{children}</>,
@@ -294,31 +283,26 @@ export const VaultNoteEditor: React.FC = () => {
   const stackLinks = readingWidth > 0 && readingWidth < 620;
   const linkCount = backlinkNodes.length + outgoingNodes.length;
 
-  const LinkList: React.FC<{ title: string; items: typeof nodes; icon: typeof ArrowRight; empty: string }> = ({
-    title,
-    items,
-    icon: Icon,
-    empty,
-  }) => (
-    <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-lg p-3 space-y-2 min-w-0">
-      <div className="text-[11px] font-medium text-[#a3a3a3] flex items-center justify-between">
+  const linkList = (title: string, items: typeof nodes, Icon: typeof ArrowRight, empty: string) => (
+    <div className="vault-sidebar rounded-2xl ring-1 ring-black/5 p-3 min-w-0">
+      <div className="px-1.5 mb-1.5 text-[12px] text-black/45 flex items-center justify-between">
         <span>{title}</span>
-        <span className="tabular-nums text-[#7c7c7c]">{items.length}</span>
+        <span className="tabular-nums">{items.length}</span>
       </div>
       {items.length === 0 ? (
-        <div className="text-[11px] text-[#7c7c7c]">{empty}</div>
+        <div className="px-1.5 pb-1 text-[13px] text-black/45">{empty}</div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {items.map((n) => (
             <button
               key={n.id}
               onClick={() => openNote(n.id)}
-              className="w-full text-left px-2 py-1.5 rounded-md bg-[#121212] hover:bg-[#1a1a1a] text-white text-xs flex items-center gap-2 transition-colors group"
+              className="w-full text-left px-2 py-1.5 rounded-md hover:bg-white hover:shadow-[0_1px_2px_rgba(15,10,20,0.08)] text-[14px] text-black/75 hover:text-black flex items-center gap-2 transition group"
               title={n.label}
             >
-              <Icon className="w-3 h-3 text-[#6b6b6b] group-hover:text-[#b57aed] flex-shrink-0" />
+              <Icon className="w-3.5 h-3.5 text-black/35 group-hover:text-[#6d55bd] flex-shrink-0" />
               <span className="truncate">{n.label}</span>
-              <span className="ml-auto text-[10px] text-[#6b6b6b] truncate max-w-[40%]">{n.folder}</span>
+              <span className="ml-auto text-[12px] text-black/35 truncate max-w-[45%]">{n.folder}</span>
             </button>
           ))}
         </div>
@@ -327,22 +311,17 @@ export const VaultNoteEditor: React.FC = () => {
   );
 
   return (
-    <div ref={rootRef} className="h-full flex flex-col bg-black text-white select-text overflow-hidden">
-      {/* Header */}
-      <div className="h-10 bg-black border-b border-[#1c1c1c] px-3 sm:px-4 flex items-center justify-between gap-3 flex-shrink-0 select-none text-xs">
-        <div className="flex items-center gap-1.5 text-[#8a8a8a] min-w-0">
-          <Folder className="w-3.5 h-3.5 text-[#9d4edd] flex-shrink-0" />
+    <div ref={rootRef} className="h-full flex flex-col bg-white text-black select-text overflow-hidden">
+      {/* Header: "# Note" like the landing preview */}
+      <div className="h-12 border-b border-black/5 px-4 sm:px-5 flex items-center justify-between gap-3 flex-shrink-0 select-none">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Hash className="w-4 h-4 text-black/45 flex-shrink-0" />
+          <span className="font-semibold text-[16px] tracking-[-0.01em] truncate">{selectedNode.label}</span>
           {!narrow && (
-            <>
-              <span className="truncate max-w-[140px]">{selectedNode.folder || 'Vault'}</span>
-              <span className="text-[#404040]">/</span>
-            </>
+            <span className="ml-1.5 text-[13px] text-black/40 truncate hidden md:inline">in {selectedNode.folder || 'Vault'}</span>
           )}
-          <span className="font-semibold text-white truncate">{selectedNode.label}</span>
           <span
-            className={`ml-2 hidden sm:flex items-center gap-1 text-[10px] whitespace-nowrap transition-colors ${
-              saveState === 'saved' ? 'text-[#6b6b6b]' : 'text-[#a3a3a3]'
-            }`}
+            className="ml-2 hidden sm:flex items-center gap-1 text-[12px] whitespace-nowrap text-black/35"
             aria-live="polite"
           >
             {saveState === 'saved' ? (
@@ -359,18 +338,14 @@ export const VaultNoteEditor: React.FC = () => {
           <button
             onClick={handleAskAIToExpand}
             disabled={isChatLoading}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md whitespace-nowrap bg-[#141414] hover:bg-[#1c1c1c] border border-[#9d4edd]/40 text-[#c9a4f2] hover:text-white disabled:opacity-50 transition font-medium text-xs"
-            title="Ask the AI to expand this note and propose new connections"
+            className="vault-pill-ghost !py-1 !px-3 !text-[13px]"
+            title="Ask Vault AI to expand this note and propose new connections"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-[#6d55bd]" />
             {!narrow && <span>Expand with AI</span>}
           </button>
 
-          <div
-            className="flex items-center bg-[#0a0a0a] border border-[#1e1e1e] rounded-md p-0.5"
-            role="radiogroup"
-            aria-label="Editor mode"
-          >
+          <div className="flex items-center rounded-full p-0.5 bg-black/[0.04]" role="radiogroup" aria-label="Editor mode">
             {modeButtons.map(({ id, label, icon: Icon, disabled }) => (
               <button
                 key={id}
@@ -378,8 +353,10 @@ export const VaultNoteEditor: React.FC = () => {
                 disabled={disabled}
                 role="radio"
                 aria-checked={effectiveMode === id}
-                className={`p-1 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
-                  effectiveMode === id ? 'bg-[#1e1e1e] text-white' : 'text-[#8a8a8a] hover:text-white'
+                className={`p-1.5 rounded-full transition disabled:opacity-30 disabled:cursor-not-allowed ${
+                  effectiveMode === id
+                    ? 'bg-white text-black shadow-[0_1px_3px_rgba(15,10,20,0.15)]'
+                    : 'text-black/45 hover:text-black'
                 }`}
                 title={disabled ? `${label} (needs a wider window)` : `${label} (${MOD} E toggles)`}
                 aria-label={label}
@@ -395,8 +372,8 @@ export const VaultNoteEditor: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {(effectiveMode === 'edit' || effectiveMode === 'split') && (
           <div
-            className={`h-full flex flex-col bg-black ${
-              effectiveMode === 'split' ? 'w-1/2 border-r border-[#1c1c1c]' : 'w-full'
+            className={`h-full flex flex-col ${
+              effectiveMode === 'split' ? 'w-1/2 border-r border-black/5 bg-[#fcfbff]' : 'w-full bg-white'
             }`}
           >
             <textarea
@@ -405,15 +382,16 @@ export const VaultNoteEditor: React.FC = () => {
               onChange={handleContentChange}
               onKeyDown={handleEditorKeyDown}
               placeholder={'Write in Markdown.\n\nLink notes with [[Note Title]]: links appear in the graph instantly.'}
-              className={`w-full h-full bg-black text-[#e6e6e6] font-mono text-[13px] leading-relaxed outline-none resize-none selection:bg-[#9d4edd]/30 placeholder-[#5a5a5a] ${
-                effectiveMode === 'edit' ? 'px-6 sm:px-10 py-8 max-w-3xl mx-auto' : 'p-6'
+              className={`w-full h-full bg-transparent text-black/80 font-mono text-[13.5px] leading-[1.75] outline-none resize-none selection:bg-[#6d55bd]/20 placeholder-black/30 ${
+                effectiveMode === 'edit' ? 'px-6 sm:px-12 py-10 max-w-3xl mx-auto' : 'px-6 py-8'
               }`}
               spellCheck={false}
               aria-label={`Edit ${selectedNode.label}`}
             />
-            <div className="flex items-center justify-between px-4 py-1.5 border-t border-[#141414] text-[10px] text-[#6b6b6b] select-none">
+            <div className="flex items-center justify-between px-5 py-2 border-t border-black/5 text-[12px] text-black/40 select-none">
               <span>
-                Type <code className="text-[#b57aed]">[[</code> to link a note · <code className="text-[#b57aed]">#</code> for tags
+                <code className="text-[#6d55bd] font-medium">[[</code> links a note ·{' '}
+                <code className="text-[#6d55bd] font-medium">#</code> adds a tag
               </span>
               <span className="tabular-nums">{wordCount} words</span>
             </div>
@@ -421,23 +399,21 @@ export const VaultNoteEditor: React.FC = () => {
         )}
 
         {(effectiveMode === 'preview' || effectiveMode === 'split') && (
-          <div
-            className={`h-full overflow-y-auto px-6 sm:px-10 py-8 bg-black ${effectiveMode === 'split' ? 'w-1/2' : 'w-full'}`}
-          >
-            <article className="max-w-2xl mx-auto">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-1">{selectedNode.label}</h1>
+          <div className={`h-full overflow-y-auto px-6 sm:px-12 py-10 bg-white ${effectiveMode === 'split' ? 'w-1/2' : 'w-full'}`}>
+            <article className="max-w-[680px] mx-auto">
+              <div className="text-[13px] text-black/45 mb-2">{selectedNode.folder}</div>
+              <h1 className="atlas-display text-[34px] sm:text-[40px] leading-[1.08] text-black">{selectedNode.label}</h1>
               {selectedNode.tags && selectedNode.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mt-4">
                   {selectedNode.tags.map((tag) => (
-                    <span key={tag} className="vault-tag text-[11px]">
-                      #{tag}
+                    <span key={tag} className="vault-tag !text-[12px]">
+                      {tag}
                     </span>
                   ))}
                 </div>
               )}
-              <div className="border-b border-[#1c1c1c] mb-5" />
 
-              <div className="text-[14px] text-[#d9d9d9] leading-[1.7]">
+              <div className="mt-8 text-[16px] text-black/80 leading-[1.65]">
                 {renderedMarkdown.trim() ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {renderedMarkdown}
@@ -445,27 +421,21 @@ export const VaultNoteEditor: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => setMode(canSplit ? 'split' : 'edit')}
-                    className="text-[#7c7c7c] italic hover:text-white"
+                    className="text-black/40 hover:text-black"
                   >
                     This note is empty. Click to start writing.
                   </button>
                 )}
               </div>
 
-              {/* Linked references */}
-              <section className="mt-12 pt-6 border-t border-[#1c1c1c] space-y-3 select-none" aria-label="Linked notes">
-                <h4 className="text-[11px] font-semibold text-[#a3a3a3] uppercase tracking-wider flex items-center gap-1.5">
-                  <LinkIcon className="w-3.5 h-3.5 text-[#9d4edd]" />
-                  Linked notes ({linkCount})
+              {/* Linked notes */}
+              <section className="mt-14 pt-8 border-t border-black/5 select-none" aria-label="Linked notes">
+                <h4 className="text-[16px] text-black/55 mb-4">
+                  Linked notes <span className="text-black/35 tabular-nums">{linkCount}</span>
                 </h4>
                 <div className={`grid gap-3 ${stackLinks ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  <LinkList title="Backlinks" items={backlinkNodes} icon={ArrowLeft} empty="No notes link here yet." />
-                  <LinkList
-                    title="Outgoing links"
-                    items={outgoingNodes}
-                    icon={ArrowRight}
-                    empty="Add [[Note Title]] to link out."
-                  />
+                  {linkList('Backlinks', backlinkNodes, ArrowLeft, 'No notes link here yet.')}
+                  {linkList('Outgoing links', outgoingNodes, ArrowRight, 'Add [[Note Title]] to link out.')}
                 </div>
               </section>
             </article>

@@ -687,8 +687,8 @@ export const OpenSourceSection: React.FC = () => (
         Your keys, your server.
       </motion.h2>
       <motion.p {...inView(0.1)} className="mt-5 max-w-[560px] text-[16px] leading-[1.6] text-white/70">
-        Brain Vault is open source, and you can run it on your own machine. API keys live in your server's .env or
-        in the app, and requests go from your server to the provider you pick.
+        Brain Vault is open source, and you can run it on your own machine. API keys live in your server's .env,
+        and requests go from your server to the provider you pick.
       </motion.p>
       <motion.div {...inView(0.2)} className="mt-12 w-[clamp(240px,34vw,400px)] aspect-[400/440] overflow-hidden">
         <BlueprintRobot className="w-full h-auto" />
