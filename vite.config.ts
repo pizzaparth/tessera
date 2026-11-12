@@ -19,4 +19,18 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          graph: ['cytoscape'],
+          motion: ['framer-motion'],
+          charts: ['recharts'],
+          markdown: ['react-markdown', 'remark-gfm', 'remark-math', 'rehype-katex'],
+        },
+      },
+    },
+  },
 });
